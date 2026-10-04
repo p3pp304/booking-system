@@ -66,10 +66,18 @@ const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'frida
 // POST /api/bookings (Pubblico - Salva prenotazione)
 export const createBooking = async (req, res) => {
   try {
-    const { clientName, clientPhone, serviceId, workerId, dateStr, timeStr } = req.body;
+    const { 
+      clientName, 
+      clientPhone, 
+      serviceId, 
+      workerId, 
+      dateStr, 
+      timeStr, 
+      notes // <-- 1. Estratto dal body
+    } = req.body;
 
     if (!clientName || !clientPhone || !serviceId || !dateStr || !timeStr) {
-      return res.status(400).json({ error: 'Tutti i campi sono obbligatori.' });
+      return res.status(400).json({ error: 'Tutti i campi obbligatori devono essere compilati.' });
     }
 
     const service = await Service.findById(serviceId);
@@ -96,7 +104,7 @@ export const createBooking = async (req, res) => {
     const startTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
     const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
 
-    // Verifica che la prenotazione non sia nel passato o violi il preavviso minimo
+    // Verifica preavviso minimo
     const minNoticeHours = businessConfig.bookingRules?.minNoticeHours || 0;
     const minBookingTime = new Date(Date.now() + minNoticeHours * 60 * 60 * 1000);
     if (startTime < minBookingTime) {
@@ -113,7 +121,7 @@ export const createBooking = async (req, res) => {
     let assignedWorkerId = workerId || null;
 
     if (workerId) {
-      // Caso A: Il cliente ha richiesto un operatore specifico
+      // Caso A: Operatore specifico
       const isOccupied = await Booking.findOne({
         workerId,
         status: 'confirmed',
@@ -135,7 +143,6 @@ export const createBooking = async (req, res) => {
         businessConfig.bookingRules?.defaultSeats ||
         1;
 
-      // Recupera tutte le prenotazioni in conflitto in questa fascia oraria
       const conflictingBookings = await Booking.find({
         status: 'confirmed',
         startTime: { $lt: endTime },
@@ -148,7 +155,7 @@ export const createBooking = async (req, res) => {
         });
       }
 
-      // Assegnazione automatica del primo operatore libero (se hai il modello Worker)
+      // Assegnazione automatica del primo operatore libero
       const busyWorkerIds = conflictingBookings
         .map((b) => b.workerId?.toString())
         .filter(Boolean);
@@ -156,7 +163,7 @@ export const createBooking = async (req, res) => {
       const availableWorker = await Worker.findOne({
         _id: { $nin: busyWorkerIds },
         isActive: true,
-        isDeleted: false // <-- Fondamentale
+        isDeleted: false
       });
 
       if (!availableWorker) {
@@ -169,54 +176,59 @@ export const createBooking = async (req, res) => {
 
     // 4. Generazione codice univoco per disdetta
     const cancellationCode = crypto.randomBytes(8).toString('hex');
+    const sanitizedNotes = notes ? notes.trim() : '';
 
     // 5. Salvataggio della prenotazione
     const newBooking = await Booking.create({
-      clientName,
-      clientPhone,
+      clientName: clientName.trim(),
+      clientPhone: clientPhone.trim(),
       serviceId,
       workerId: assignedWorkerId,
       startTime,
       endTime,
+      notes: sanitizedNotes, // <-- 2. Salvato a database
       cancellationCode,
       status: 'confirmed'
     });
 
-    // Formatta data e ora leggibili per il testo WhatsApp
+    // Formattazione data e ora per WhatsApp
     const formattedDate = startTime.toLocaleDateString('it-IT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
     });
     const formattedTime = startTime.toLocaleTimeString('it-IT', {
-    hour: '2-digit',
-    minute: '2-digit'
+      hour: '2-digit',
+      minute: '2-digit'
     });
 
-    // Genera l'URL wa.me con il template 1 (Client -> Salone)
+    // Generazione URL wa.me
     const whatsappUrl = generateWhatsAppLinks.clientBookingNotice({
-    clientName: newBooking.clientName,
-    serviceName: service.name,
-    date: formattedDate,
-    time: formattedTime,
-    cancellationCode: newBooking.cancellationCode,
-    clientUrl: req.get('origin') // o l'URL base del tuo frontend PWA
+      clientName: newBooking.clientName,
+      serviceName: service.name,
+      date: formattedDate,
+      time: formattedTime,
+      notes: newBooking.notes, // <-- 3. Passato al generatore WhatsApp
+      cancellationCode: newBooking.cancellationCode,
+      clientUrl: req.get('origin')
     });
 
-    res.status(201).json({
-    success: true,
-    booking: {
+    return res.status(201).json({
+      success: true,
+      booking: {
         id: newBooking._id,
         clientName: newBooking.clientName,
+        clientPhone: newBooking.clientPhone,
         startTime: newBooking.startTime,
         endTime: newBooking.endTime,
+        notes: newBooking.notes, // <-- 4. Ritorno al frontend
         cancellationCode: newBooking.cancellationCode
-    },
-    whatsappUrl // <-- Il frontend apre semplicemente window.open(whatsappUrl, '_blank')
+      },
+      whatsappUrl
     });
   } catch (error) {
     console.error('Errore createBooking:', error);
-    res.status(500).json({ error: 'Impossibile completare la prenotazione.' });
+    return res.status(500).json({ error: 'Impossibile completare la prenotazione.' });
   }
 };
 
