@@ -3,37 +3,50 @@ import {
   getAllWorkers,
   createWorker,
   updateWorker,
-  deleteWorker
+  toggleWorkerActive,
+  deleteWorker,
 } from '../../controllers/WorkerController.js';
-import { requireAdminOnly } from '../../middlewares/authMiddleware.js';
+import { verifyToken, requireAdminOnly } from '../../middlewares/authMiddleware.js';
+
 const router = express.Router();
 
 /**
  * @route   GET /api/admin/workers
- * @desc    Recupera l'elenco completo dello staff (inclusi disattivati/in ferie e recapiti privati)
+ * @desc    Recupera l'elenco completo dello staff (esclusi solo i soft-deleted)
+ * @access  Staff & Admin autenticati
  */
 router.get('/', getAllWorkers);
 
 /**
- * @route   POST /api/admin/workers
- * @desc    Aggiunge un nuovo operatore/barbiere all'organico
- * @body    name (obbligatorio), phone, photoUrl, bio, isActive
+ * @route   PATCH /api/admin/workers/:id/toggle-active
+ * @desc    Toggle rapido presenza/pausa/ferie (inverte isActive)
+ * @access  Staff & Admin autenticati
  */
-router.post('/', requireAdminOnly,createWorker);
+router.patch('/:id/toggle-active', toggleWorkerActive);
+
+/**
+ * @route   POST /api/admin/workers
+ * @desc    Crea Worker (colonna agenda) e utenza User (credenziali login) in transazione
+ * @body    name, color, email, password
+ * @access  Solo Admin
+ */
+router.post('/', requireAdminOnly, createWorker);
 
 /**
  * @route   PUT /api/admin/workers/:id
- * @desc    Modifica i dati di un operatore o il suo stato (es: attiva/disattiva per ferie)
- * @params  id (ObjectId dell'operatore)
- * @body    name, phone, photoUrl, bio, isActive
+ * @desc    Modifica anagrafica barbiere (nome, colore agenda)
+ * @params  id (ObjectId del Worker)
+ * @body    name, color
+ * @access  Solo Admin
  */
-router.put('/:id',requireAdminOnly, updateWorker);
+router.put('/:id', requireAdminOnly, updateWorker);
 
 /**
  * @route   DELETE /api/admin/workers/:id
- * @desc    Disattiva l'operatore (soft-delete impostando isActive: false per preservare lo storico prenotazioni)
- * @params  id (ObjectId dell'operatore)
+ * @desc    Soft-delete del barbiere (isDeleted: true) e revoca credenziali User
+ * @params  id (ObjectId del Worker)
+ * @access  Solo Admin
  */
-router.delete('/:id',requireAdminOnly, deleteWorker);
+router.delete('/:id', requireAdminOnly, deleteWorker);
 
 export default router;
