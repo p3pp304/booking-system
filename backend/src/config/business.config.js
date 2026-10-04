@@ -23,7 +23,7 @@ export default {
     },
     contact: {
       phone: "+390212345678",
-      whatsappNumber: "+393401234567", // Numero mittente WhatsApp per clienti
+      whatsappNumber: "+39 3402212050", // Numero mittente WhatsApp per clienti
       instagramHandle: "@barberia_style",
       websiteUrl: "https://barberiastyle.it"
     },
