@@ -10,6 +10,7 @@ import {
   createTimeBlock
 } from '../../controllers/AdminBookingController.js';
 import { requireAdminOnly } from '../../middlewares/authMiddleware.js';
+import { checkBookingOwnership, checkWorkerAssignment } from '../../middlewares/bookingSecurity.js';
 const router = express.Router();
 
 /**
@@ -27,14 +28,14 @@ router.get('/', getBookings);
  * POST /api/admin/bookings/block
  * Riceve { workerId, startDate, endDate, reason }
  */
-router.post('/block', createTimeBlock);
+router.post('/block',checkWorkerAssignment, createTimeBlock);
 
 /**
  * @route   POST /api/admin/bookings
  * @desc    Inserimento manuale appuntamento (walk-in o prenotazione telefonica)
  * @body    clientName, clientPhone, serviceId, workerId (opz.), dateStr, timeStr, notes (opz.)
  */
-router.post('/', createManualBooking);
+router.post('/',checkWorkerAssignment, createManualBooking);
 
 /**
  * @route   PUT /api/admin/bookings/:id
@@ -42,7 +43,7 @@ router.post('/', createManualBooking);
  * @params  id (ObjectId della prenotazione)
  * @body    clientName, clientPhone, serviceId, workerId, dateStr, timeStr, notes
  */
-router.put('/:id', updateBooking);
+router.put('/:id',checkBookingOwnership, updateBooking);
 
 /**
  * @route   DELETE /api/admin/bookings/:id
@@ -58,14 +59,14 @@ router.delete('/:id', requireAdminOnly, deleteBooking);
  * @params  id (ObjectId della prenotazione)
  * @body    status (string)
  */
-router.patch('/:id/status', updateBookingStatus);
+router.patch('/:id/status', checkBookingOwnership, updateBookingStatus);
 
 /**
  * @route   GET /api/admin/bookings/:id/reminder-link
  * @desc    Genera l'URL wa.me con testo preimpostato per inviare il promemoria manuale al cliente
  * @params  id (ObjectId della prenotazione)
  */
-router.get('/:id/reminder-link', getBookingReminderLink);
+router.get('/:id/reminder-link', checkBookingOwnership, getBookingReminderLink);
 
 /**
  * @route   PATCH /api/admin/bookings/:id/reminder-status
@@ -73,6 +74,6 @@ router.get('/:id/reminder-link', getBookingReminderLink);
  * @params  id (ObjectId della prenotazione)
  * @body    sent (boolean, default: true)
  */
-router.patch('/:id/reminder-status', updateReminderStatus);
+router.patch('/:id/reminder-status', checkBookingOwnership, updateReminderStatus);
 
 export default router;
