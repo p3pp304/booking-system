@@ -3,7 +3,7 @@ import Booking from '../models/Booking.js';
 import Worker from '../models/Worker.js';
 import Service from '../models/Service.js';
 import businessConfig from '../config/business.config.js';
-import { generateWhatsAppLinks } from '../services/whatsapp.service.js';
+import { generateWhatsAppLinks } from '../services/reminder.service.js';
 
 
 const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
