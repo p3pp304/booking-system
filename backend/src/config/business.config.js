@@ -65,7 +65,7 @@ export default {
     limits: {
       // Massimo numero di prenotazioni FUTURE attive contemporaneamente per lo stesso numero di telefono
       // Evita che un cliente prenoti 5 orari diversi per poi sceglierne uno
-      maxActiveBookingsPerPhone: 1,
+      maxActiveBookingsPerPhone: 2,
     },
 
     // Preferenze operatore
