@@ -39,7 +39,7 @@ export const createBooking = (payload) => {
 };
 
 // Dettagli prenotazione e verifica policy di disdetta
-export const fetchBookingByCode = (code) => {
+export const getBookingByCode = (code) => {
   return publicRequest(`/bookings/manage/${code}`, {
     method: 'GET',
   });
@@ -49,5 +49,12 @@ export const fetchBookingByCode = (code) => {
 export const cancelBookingByCode = (code) => {
   return publicRequest(`/bookings/cancel/${code}`, {
     method: 'POST',
+  });
+};
+
+// Recupero configurazione pubblica del salone (orari, recapiti, regole di prenotazione)
+export const fetchPublicConfig = () => {
+  return publicRequest('/config', {
+    method: 'GET',
   });
 };

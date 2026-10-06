@@ -29,7 +29,7 @@ export const publicRequest = async (endpoint, options = {}) => {
  * Inietta automaticamente il token JWT presente nel browser.
  */
 export const adminRequest = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('auth_token');
 
   const headers = {
     'Content-Type': 'application/json',

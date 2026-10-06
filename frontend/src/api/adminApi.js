@@ -1,4 +1,4 @@
-import { adminRequest } from './api';
+import { adminRequest, publicRequest } from './api';
 
 // ==========================================
 // 1. AUTENTICAZIONE E PROFILO  (sia staff che admin)
@@ -160,5 +160,17 @@ export const updateBookingReminderStatus = (id, sent = true) => {
   return adminRequest(`/admin/bookings/${id}/reminder-status`, {
     method: 'PATCH',
     body: JSON.stringify({ sent }),
+  });
+};
+
+// INCASSI
+export const fetchAdminRevenueStats = ({ period = 'month', year, month, date } = {}) => {
+  const params = new URLSearchParams({ period });
+  if (year) params.append('year', year);
+  if (month) params.append('month', month);
+  if (date) params.append('date', date);
+
+  return adminRequest(`/admin/revenue?${params.toString()}`, {
+    method: 'GET',
   });
 };
