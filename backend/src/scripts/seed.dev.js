@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -74,22 +73,18 @@ const seedDev = async () => {
     console.log('✂️ 4 Servizi creati.');
 
     // 4. Utenti: Admin e Staff
-    const salt = await bcrypt.genSalt(10);
-    const adminPass = await bcrypt.hash('Admin1234!', salt);
-    const staffPass = await bcrypt.hash('Staff1234!', salt);
-
     await User.create([
       {
         name: 'Titolare Boss',
         email: 'admin@barberia.it',
-        password: adminPass,
+        password: 'Admin1234!',
         role: 'admin',
         workerId: workers[0]._id
       },
       {
         name: 'Luca Barbiere',
         email: 'luca@barberia.it',
-        password: staffPass,
+        password: 'Staff1234!',
         role: 'staff',
         workerId: workers[1]._id
       }

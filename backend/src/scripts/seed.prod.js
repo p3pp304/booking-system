@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -32,13 +31,10 @@ const seedProd = async () => {
     const existingAdmin = await User.findOne({ email: adminEmail });
 
     if (!existingAdmin) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(adminPlainPassword, salt);
-
       await User.create({
         name: 'Titolare',
         email: adminEmail,
-        password: hashedPassword,
+        password: adminPlainPassword,
         role: 'admin'
       });
       console.log(`👤 Admin creato con successo: ${adminEmail}`);
