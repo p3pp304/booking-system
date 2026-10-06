@@ -1,10 +1,10 @@
-import crypto from 'crypto';
 import Booking from '../models/Booking.js';
 import Worker from '../models/Worker.js';
 import Service from '../models/Service.js';
 import { getAvailableSlots } from '../services/availability.service.js';
 import businessConfig from '../config/business.config.js';
-import { generateWhatsAppLinks } from '../services/whatsapp.service.js';
+import { cleanAndValidatePhone, validateFullName } from '../utils/validators.js';
+import { generateWhatsAppLinks, createGoogleCalendarUrl } from '../services/reminder.service.js';
 
 // GET /api/bookings/available-slots (Pubblico)
 export const getSlots = async (req, res) => {
@@ -76,10 +76,33 @@ export const createBooking = async (req, res) => {
       notes // <-- 1. Estratto dal body
     } = req.body;
 
+    // --- BLINDO LIVELLO 2: Validazione Dati Cliente ---
+    if (!validateFullName(clientName)) {
+      return res.status(400).json({ 
+        error: 'Nome e cognome obbligatori (almeno due parole di minimo 2 lettere).' 
+      });
+    }
+
+    // Validazione e Normalizzazione Cellulare
+    const phoneCheck = cleanAndValidatePhone(clientPhone);
+    if (!phoneCheck.isValid) {
+      return res.status(400).json({ 
+        error: 'Numero di cellulare non valido. Inserisci un cellulare italiano (es. 340 1234567) o un numero estero con prefisso internazionale (+XX).' 
+      });
+    }
+
+    // Normalizziamo il nome togliendo spazi doppi
+    const normalizedName = clientName.trim().split(/\s+/).join(' ');
+    
+    // Nel DB salviamo il numero GIÀ PULITO e verificato!
+    // (es. "3401234567" se italiano, o "+491701234567" se estero)
+    const normalizedPhone = phoneCheck.cleanPhone;
+
     if (!clientName || !clientPhone || !serviceId || !dateStr || !timeStr) {
       return res.status(400).json({ error: 'Tutti i campi obbligatori devono essere compilati.' });
     }
 
+    
     const service = await Service.findById(serviceId);
     if (!service) {
       return res.status(404).json({ error: 'Servizio non valido.' });
@@ -87,12 +110,12 @@ export const createBooking = async (req, res) => {
 
     // 1. Limite Anti-Spam: max prenotazioni attive future per numero di telefono
     const activeBookings = await Booking.countDocuments({
-      clientPhone,
+      clientPhone: normalizedPhone,
       status: 'confirmed',
       startTime: { $gte: new Date() }
     });
 
-    if (activeBookings >= businessConfig.bookingRules.limits.maxActiveBookingsPerPhone) {
+    if (activeBookings > businessConfig.bookingRules.limits.maxActiveBookingsPerPhone) {
       return res.status(409).json({
         error: 'Hai già un appuntamento attivo in programma. Disdici il precedente se desideri cambiare data.'
       });
@@ -175,13 +198,13 @@ export const createBooking = async (req, res) => {
     }
 
     // 4. Generazione codice univoco per disdetta
-    const cancellationCode = crypto.randomBytes(8).toString('hex');
+    const cancellationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const sanitizedNotes = notes ? notes.trim() : '';
 
     // 5. Salvataggio della prenotazione
     const newBooking = await Booking.create({
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
+      clientName: normalizedName,
+      clientPhone: normalizedPhone,
       serviceId,
       workerId: assignedWorkerId,
       startTime,
@@ -213,18 +236,19 @@ export const createBooking = async (req, res) => {
       clientUrl: req.get('origin')
     });
 
+    const googleCalendarUrl = createGoogleCalendarUrl({
+          serviceName: service?.name || "Taglio / Trattamento", // la variabile service recuperata prima della create
+          clientName: newBooking.clientName,
+          startTime: newBooking.startTime,
+          endTime: newBooking.endTime,
+          cancellationCode: newBooking.cancellationCode,
+        });
+
     return res.status(201).json({
       success: true,
-      booking: {
-        id: newBooking._id,
-        clientName: newBooking.clientName,
-        clientPhone: newBooking.clientPhone,
-        startTime: newBooking.startTime,
-        endTime: newBooking.endTime,
-        notes: newBooking.notes, // <-- 4. Ritorno al frontend
-        cancellationCode: newBooking.cancellationCode
-      },
-      whatsappUrl
+      booking: newBooking,
+      whatsappUrl,
+      googleCalendarUrl
     });
   } catch (error) {
     console.error('Errore createBooking:', error);
@@ -241,94 +265,48 @@ export const getBookingForManagement = async (req, res) => {
   try {
     const { code } = req.params;
 
-    if (!code) {
-      return res.status(400).json({ error: 'Codice prenotazione obbligatorio.' });
-    }
-
     const booking = await Booking.findOne({ cancellationCode: code })
-      .populate('serviceId', 'name durationMinutes price')
+      .populate('serviceId', 'name price duration')
       .populate('workerId', 'name');
 
     if (!booking) {
-      return res.status(404).json({ error: 'Appuntamento non trovato o codice non valido.' });
+      return res.status(404).json({ error: 'Appuntamento non trovato.' });
     }
 
-    if (booking.status === 'cancelled') {
-      return res.json({
-        success: true,
-        status: 'cancelled',
-        message: 'Questo appuntamento risulta già annullato.',
-        booking: {
-          clientName: booking.clientName,
-          serviceName: booking.serviceId?.name || 'Servizio',
-          startTime: booking.startTime
-        },
-        cancellationPolicy: {
-          canCancel: false
-        }
-      });
-    }
+    // Calcolo preavviso
+    const minHours = businessConfig.bookingRules?.cancellation?.minNoticeHours || 4;
+    const now = new Date();
+    const apptTime = new Date(booking.startTime);
+    const diffHours = (apptTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    const now = Date.now();
-    const apptTime = new Date(booking.startTime).getTime();
-    const hoursRemaining = (apptTime - now) / (1000 * 60 * 60);
+    // Può disdire solo se lo stato attuale nel DB è 'confirmed' ED è nei tempi
+    const canCancel = booking.status === 'confirmed' && diffHours >= minHours;
 
-    const minNoticeHours = businessConfig.bookingRules?.cancellation?.minNoticeHours ?? 4;
-    const allowClientCancellation = businessConfig.bookingRules?.cancellation?.allowClientCancellation ?? true;
-
-    const canCancel = allowClientCancellation && hoursRemaining >= minNoticeHours && hoursRemaining > 0;
-
-    const timezone = businessConfig.business.timezone || 'Europe/Rome';
-    const formattedDate = new Date(booking.startTime).toLocaleDateString('it-IT', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      timeZone: timezone
-    });
-
-    const formattedStartTime = new Date(booking.startTime).toLocaleTimeString('it-IT', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: timezone
-    });
-
-    const formattedEndTime = new Date(booking.endTime).toLocaleTimeString('it-IT', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: timezone
-    });
-
-    res.json({
+    return res.json({
       success: true,
-      status: booking.status,
       booking: {
         id: booking._id,
+        cancellationCode: booking.cancellationCode,
         clientName: booking.clientName,
-        service: {
-          name: booking.serviceId?.name || 'Servizio',
-          durationMinutes: booking.serviceId?.durationMinutes,
-          price: booking.serviceId?.price
-        },
-        workerName: booking.workerId?.name || 'Qualsiasi operatore disponibile',
-        dateText: formattedDate,
-        timeWindowText: `${formattedStartTime} - ${formattedEndTime}`,
+        serviceName: booking.serviceId?.name || 'Trattamento',
+        workerName: booking.workerId?.name,
         startTime: booking.startTime,
-        endTime: booking.endTime
+        endTime: booking.endTime,
+        status: booking.status, // Deve essere quello del DB ('confirmed')
       },
-      cancellationPolicy: {
+      policy: {
         canCancel,
-        minNoticeHours,
-        hoursRemaining: Math.max(0, Number(hoursRemaining.toFixed(1))),
-        salonPhone: businessConfig.business.contact.phone || businessConfig.business.contact.whatsappNumber,
-        noticeMessage: canCancel
-          ? `Puoi annullare gratuitamente fino a ${minNoticeHours} ore prima dell'inizio.`
-          : businessConfig.bookingRules.cancellation.tooLateMessage(minNoticeHours)
+        minNoticeHours: minHours,
+        diffHours: Math.round(diffHours * 10) / 10,
+      },
+      businessContact: {
+        phone: businessConfig.business.contact.phone,
+        whatsappNumber: businessConfig.business.contact.whatsappNumber,
       }
     });
   } catch (error) {
     console.error('Errore getBookingForManagement:', error);
-    res.status(500).json({ error: 'Errore durante il recupero dei dettagli della prenotazione.' });
+    return res.status(500).json({ error: 'Errore nel recupero della prenotazione.' });
   }
 };
 
@@ -348,7 +326,8 @@ export const cancelBooking = async (req, res) => {
       });
     }
 
-    const booking = await Booking.findOne({ cancellationCode: code, status: 'confirmed' });
+    const booking = await Booking.findOne({ cancellationCode: code, status: 'confirmed' })
+      .populate('serviceId', 'name');
 
     if (!booking) {
       return res.status(404).json({ error: 'Prenotazione non trovata o già annullata.' });
@@ -370,9 +349,29 @@ export const cancelBooking = async (req, res) => {
     booking.cancelledAt = new Date();
     await booking.save();
 
+    const timezone = businessConfig.business.timezone || 'Europe/Rome';
+    const formattedDate = booking.startTime.toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: timezone
+    });
+    const formattedTime = booking.startTime.toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: timezone
+    });
+    const whatsappUrl = generateWhatsAppLinks.clientCancellationNotice({
+      clientName: booking.clientName,
+      serviceName: booking.serviceId?.name || 'Servizio',
+      date: formattedDate,
+      time: formattedTime
+    });
+
     res.json({
       success: true,
-      message: 'Prenotazione annullata con successo.'
+      message: 'Prenotazione annullata con successo.',
+      whatsappUrl
     });
   } catch (error) {
     console.error('Errore cancelBooking:', error);
