@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { getBookingByCode, cancelBookingByCode } from '../api/publicApi';
 import { removeBookingCode } from '../helpers/bookingStorage';
-import { formatBusinessDate, formatBusinessTime } from '../helpers/businessTime';
+
 import ForgotCodeFallback from './ForgotCodeFallback';
 
 export default function ManageBookingPage() {
@@ -132,18 +132,25 @@ export default function ManageBookingPage() {
         }
     };
 
-  const formattedDate = bookingData?.startTime
-    ? formatBusinessDate(bookingData.startTime, {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })
-    : '';
+    // --- FORMATTAZIONE DATE CON IL TRUCCO DELLA Z (UTC) ---
+    // Estraiamo la data ignorando il fuso orario del browser del cliente
+    const formattedDate = bookingData?.startTime
+        ? new Date(bookingData.startTime).toLocaleDateString('it-IT', {
+            timeZone: 'UTC', // <-- BLINDA IL FUSO ORARIO
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        })
+        : '';
 
-  const formattedTime = bookingData?.startTime
-    ? formatBusinessTime(bookingData.startTime)
-    : '';
+    const formattedTime = bookingData?.startTime
+        ? new Date(bookingData.startTime).toLocaleTimeString('it-IT', {
+            timeZone: 'UTC', // <-- BLINDA IL FUSO ORARIO
+            hour: '2-digit',
+            minute: '2-digit',
+        })
+        : '';
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 flex flex-col items-center justify-center p-4">

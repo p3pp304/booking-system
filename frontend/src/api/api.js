@@ -1,9 +1,12 @@
 const configuredApiUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 const localApiUrl = import.meta.env.VITE_LOCAL_BACKEND_URL || 'http://localhost:3000';
 let apiConfigurationError = '';
+
+// Di default usa localhost in sviluppo, altrimenti vuoto
 let apiBaseUrl = import.meta.env.DEV ? localApiUrl : '';
 
-if (configuredApiUrl) {
+// Usa l'URL di produzione (Render) SOLO se non siamo in sviluppo
+if (configuredApiUrl && !import.meta.env.DEV) {
   try {
     const parsedUrl = new URL(configuredApiUrl);
     if (!['http:', 'https:'].includes(parsedUrl.protocol) || parsedUrl.pathname !== '/' || parsedUrl.search || parsedUrl.hash) {

@@ -3,7 +3,6 @@ import Booking from '../models/Booking.js';
 import Worker from '../models/Worker.js';
 import Service from '../models/Service.js';
 import businessConfig from '../config/business.config.js';
-import { businessLocalToUtcDate, businessDateTimeLocalToUtcDate } from '../utils/dateTime.js';
 
 
 const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -61,23 +60,25 @@ export const getBookings = async (req, res) => {
 /**
  * @route   POST /api/admin/bookings
  * @desc    Inserimento manuale appuntamento (walk-in o telefonico) senza limiti anti-spam
- * @body    clientName, clientPhone, serviceId, workerId (opz.), dateStr, timeStr, notes (opz.)
+ * @body    clientName, clientPhone, serviceId, workerId (opz.), dateStr, timeStr, datetime, notes (opz.)
  */
 export const createManualBooking = async (req, res) => {
   try {
-    const { clientName, clientPhone, serviceId, workerId, dateStr, timeStr, notes } = req.body;
+    // 1. Aggiungiamo 'datetime' che ci viene inviato dal frontend
+    const { clientName, clientPhone, serviceId, workerId, dateStr, timeStr, datetime, notes } = req.body;
 
-    if (!clientName || !clientPhone || !serviceId || !dateStr || !timeStr) {
+    if (!clientName || !clientPhone || !serviceId || !dateStr || !timeStr || !datetime) {
       return res.status(400).json({ error: 'Dati obbligatori mancanti.' });
     }
 
     const service = await Service.findById(serviceId);
     if (!service) return res.status(404).json({ error: 'Servizio non trovato.' });
 
-    // dateStr + timeStr vengono inviate in orario business (Europe/Rome).
-    // Le convertiamo esplicitamente in UTC per garantire il corretto
-    // istante salvato nel database, indipendentemente dal timezone del server.
-    const startTime = businessLocalToUtcDate(dateStr, timeStr);
+    // 2. Estraiamo anno, mese e giorno per usarli più avanti nel controllo capienza
+    const [year, month, day] = dateStr.split('-').map(Number);
+
+    // 3. IL TRUCCO DELLA Z: usiamo il 'datetime' puro inviato dal frontend
+    const startTime = new Date(datetime);
     const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
 
     let assignedWorkerId = workerId || null;
@@ -174,15 +175,12 @@ export const updateBooking = async (req, res) => {
       endTime = new Date(new Date(startTime).getTime() + service.durationMinutes * 60 * 1000);
     }
 
-    if (dateStr && timeStr) {
-      // dateStr + timeStr vengono inviate in orario business (Europe/Rome).
-      // Le convertiamo esplicitamente in UTC per garantire il corretto
-      // istante salvato nel database, indipendentemente dal timezone del server.
-      const startTime = businessLocalToUtcDate(dateStr, timeStr);
-      const service = await Service.findById(finalServiceId);
-      endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
-    }
-
+    if (req.body.datetime) {
+          // Usa l'UTC forzato unificato (trucco della Z) in arrivo dall'Admin Panel
+          startTime = new Date(req.body.datetime);
+          const service = await Service.findById(finalServiceId);
+          endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
+        }
     const finalWorkerId = workerId !== undefined ? workerId : booking.workerId;
 
     if (finalWorkerId) {
@@ -296,19 +294,18 @@ export const getBookingReminderLink = async (req, res) => {
       return res.status(400).json({ error: 'Impossibile inviare un promemoria per un appuntamento annullato.' });
     }
 
-    const timezone = businessConfig.business.timezone || 'Europe/Rome';
-
+// Forza la formattazione testuale in UTC puro per ignorare fusi orari server
     const formattedDate = new Date(booking.startTime).toLocaleDateString('it-IT', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      timeZone: timezone
+      timeZone: 'UTC'
     });
 
     const formattedTime = new Date(booking.startTime).toLocaleTimeString('it-IT', {
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: timezone
+      timeZone: 'UTC'
     });
 
     const reminderUrl = generateWhatsAppLinks.staffReminder({

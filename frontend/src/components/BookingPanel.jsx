@@ -169,7 +169,7 @@ export default function BookingPanel({ isOpen, onClose }) {
   const nameIsValid = validateFullName(formData.customerName);
   const phoneValidation = cleanAndValidatePhone(formData.customerPhone);
 
-  // Submit Finale Prenotazione
+// Submit Finale Prenotazione
   const handleSubmitBooking = async (e) => {
     if (e) e.preventDefault();
     setTouched({ customerName: true, customerPhone: true });
@@ -184,11 +184,20 @@ export default function BookingPanel({ isOpen, onClose }) {
     setError(null);
 
     try {
+      // 1. Estraiamo la stringa oraria in modo pulito ("10:30")
+      const timeString = typeof selectedSlot === 'string' ? selectedSlot : selectedSlot.time;
+      
+      // 2. IL TRUCCO DELLA Z: Uniamo data e ora forzando l'UTC assoluto
+      const utcDateTimeString = `${selectedDate}T${timeString}:00.000Z`;
+
       const payload = {
         serviceId: selectedService._id,
         workerId: selectedWorker ? selectedWorker._id : (selectedSlot.workerId || null),
-        dateStr: selectedDate,
-        timeStr: selectedSlot.time || selectedSlot,
+        // Manteniamo questi due per retrocompatibilità se ti servono altrove
+        dateStr: selectedDate, 
+        timeStr: timeString, 
+        // 3. INVIAMO LA DATA FORZATA (Questa sarà quella che salveremo su Mongo)
+        datetime: utcDateTimeString, 
         clientName: formData.customerName.trim(),
         clientPhone: `+39${phoneValidation.cleanPhone}`,
         notes: formData.notes.trim(),

@@ -2,7 +2,6 @@ import Booking from '../models/Booking.js';
 import Worker from '../models/Worker.js';
 import Service from '../models/Service.js';
 import { getAvailableSlots } from '../services/availability.service.js';
-import { businessLocalToUtcDate } from '../utils/dateTime.js';
 import businessConfig from '../config/business.config.js';
 import { cleanAndValidatePhone, validateFullName } from '../utils/validators.js';
 import { generateWhatsAppLinks, createGoogleCalendarUrl } from '../services/reminder.service.js';
@@ -74,6 +73,7 @@ export const createBooking = async (req, res) => {
       workerId, 
       dateStr, 
       timeStr, 
+      datetime,
       notes // <-- 1. Estratto dal body
     } = req.body;
 
@@ -129,7 +129,7 @@ export const createBooking = async (req, res) => {
     // indipendentemente dal timezone del server.
     const [year, month, day] = dateStr.split('-').map(Number);
     const [hours, minutes] = timeStr.split(':').map(Number);
-    const startTime = businessLocalToUtcDate(dateStr, timeStr);
+    const startTime = new Date(datetime);
     const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
 
     // Verifica preavviso minimo
@@ -220,13 +220,15 @@ export const createBooking = async (req, res) => {
       status: 'confirmed'
     });
 
-    // Formattazione data e ora per WhatsApp
+// Formattazione data e ora per WhatsApp (FORZATA IN UTC)
     const formattedDate = startTime.toLocaleDateString('it-IT', {
+      timeZone: 'UTC', // <-- BLINDATO
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     });
     const formattedTime = startTime.toLocaleTimeString('it-IT', {
+      timeZone: 'UTC', // <-- BLINDATO
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -355,18 +357,19 @@ export const cancelBooking = async (req, res) => {
     booking.cancelledAt = new Date();
     await booking.save();
 
-    const timezone = businessConfig.business.timezone || 'Europe/Rome';
+    // Ignoriamo il timezone locale e forziamo l'estrazione in UTC per rispettare il trucco
     const formattedDate = booking.startTime.toLocaleDateString('it-IT', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      timeZone: timezone
+      timeZone: 'UTC' 
     });
     const formattedTime = booking.startTime.toLocaleTimeString('it-IT', {
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: timezone
+      timeZone: 'UTC' 
     });
+
     const whatsappUrl = generateWhatsAppLinks.clientCancellationNotice({
       clientName: booking.clientName,
       serviceName: booking.serviceId?.name || 'Servizio',

@@ -42,11 +42,18 @@ const normalizeBooking = (booking) => {
   const worker = booking.workerId;
   const service = booking.serviceId;
 
+  // ESTRAZIONE STRICT UTC (Il trucco della Z in lettura)
+  const year = start.getUTCFullYear();
+  const month = String(start.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(start.getUTCDate()).padStart(2, '0');
+  const hours = String(start.getUTCHours()).padStart(2, '0');
+  const minutes = String(start.getUTCMinutes()).padStart(2, '0');
+
   return {
     ...booking,
     id: String(booking._id || booking.id),
-    date: toDateInputValue(start),
-    time: start.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+    date: `${year}-${month}-${day}`, // Data esatta UTC
+    time: `${hours}:${minutes}`,     // Ora esatta UTC
     duration: Math.max(0, Math.round((end - start) / 60000)),
     price: booking.price ?? service?.price ?? null,
     clientName: booking.clientName || booking.customerName || '',
@@ -671,18 +678,26 @@ function BookingDetailModal({ booking, workers, services, isAdmin, onClose, onSt
   });
   const updateField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setIsSaving(true);
-    setError('');
-    try {
-      await onUpdateDetails(form);
-    } catch (err) {
-      setError(err.message || 'Impossibile aggiornare l’appuntamento.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+        const handleSubmit = async (event) => {
+            event.preventDefault();
+            setIsSaving(true);
+            setError('');
+            try {
+            // Uniamo la data e l'ora modificate forzando l'UTC
+            const utcDateTimeString = `${form.dateStr}T${form.timeStr}:00.000Z`;
+            
+            const payload = {
+                ...form,
+                datetime: utcDateTimeString // Passiamo il campo unificato al backend
+            };
+
+            await onUpdateDetails(payload);
+            } catch (err) {
+            setError(err.message || 'Impossibile aggiornare l’appuntamento.');
+            } finally {
+            setIsSaving(false);
+            }
+        };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -846,6 +861,9 @@ function CreateBookingModal({ defaultDate, workers, services, onClose, onCreateM
     setError('');
     try {
       if (mode === 'appointment') {
+        // Appuntamento normale: uniamo e forziamo UTC
+        const utcDateTimeString = `${form.dateStr}T${form.timeStr}:00.000Z`;
+        
         await onCreateManual({
           clientName: form.clientName.trim(),
           clientPhone: form.clientPhone.trim(),
@@ -853,13 +871,16 @@ function CreateBookingModal({ defaultDate, workers, services, onClose, onCreateM
           workerId: form.workerId,
           dateStr: form.dateStr,
           timeStr: form.timeStr,
+          datetime: utcDateTimeString, // Il nuovo campo che salva la vita
           notes: form.notes.trim(),
         });
       } else {
+        // Blocco orario (Ferie/Pausa): form.startDate è nel formato "YYYY-MM-DDTHH:mm"
+        // Basta aggiungere i secondi e la Z per renderlo UTC assoluto
         await onCreateBlock({
           workerId: form.workerId,
-          startDate: form.startDate,
-          endDate: form.endDate,
+          startDate: `${form.startDate}:00.000Z`, 
+          endDate: `${form.endDate}:00.000Z`,
           reason: form.reason.trim(),
         });
       }

@@ -43,10 +43,6 @@ const bookingSchema = new mongoose.Schema(
         return this.type === 'appointment';
       }
     },
-    price: {
-      type: Number,
-      min: 0,
-    },
     startTime: { 
       type: Date, 
       required: true 
@@ -54,11 +50,6 @@ const bookingSchema = new mongoose.Schema(
     endTime: { 
       type: Date, 
       required: true 
-    },
-    notes: {
-      type: String,
-      trim: true,
-      default: '',
     },
     status: { 
       type: String, 
