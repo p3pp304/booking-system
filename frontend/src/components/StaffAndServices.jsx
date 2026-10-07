@@ -231,7 +231,7 @@ export default function StaffAndServicesPage() {
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white capitalize">{worker.name}</h3>
-                        <span className="text-[11px] text-zinc-400">{worker.role || 'Barbiere'}</span>
+                        <span className="text-[11px] text-zinc-400">{worker.isActive ? 'Prenotabile' : 'Non prenotabile'}</span>
                       </div>
                     </div>
 
