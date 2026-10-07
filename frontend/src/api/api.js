@@ -1,5 +1,6 @@
-const localUrl = import.meta.env.VITE_LOCAL_BACKEND_URL || 'http://localhost:3000';
-export const API_BASE_URL = import.meta.env.DEV ? localUrl : '';
+const configuredApiUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const localApiUrl = import.meta.env.VITE_LOCAL_BACKEND_URL || 'http://localhost:3000';
+export const API_BASE_URL = (configuredApiUrl || (import.meta.env.DEV ? localApiUrl : '')).replace(/\/$/, '');
 
 /**
  * Wrapper per le chiamate PUBBLICHE del cliente.
