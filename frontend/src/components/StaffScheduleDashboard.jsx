@@ -97,24 +97,32 @@ export default function StaffScheduleDashboard() {
     const isAdmin = user?.role === 'admin';
 
     // 2. Controllo se l'utente può toccare un dato appuntamento
-  const canTouchBooking = useCallback((booking) => {
-    if (isAdmin) return true;
-    if (!user || !booking) return false;
+    const canTouchBooking = useCallback((booking) => {
+        // Se è Admin, ha sempre accesso totale
+        if (isAdmin) return true;
+        if (!user || !booking) return false;
 
-    const myWorkerId = String(user.workerId || user.id || user._id || '');
-    const bookingWorkerId = String(booking.workerId?._id || booking.workerId || '');
+        // Estrai il workerId dell'utente loggato (assicurati di prendere quello corretto dal token/profilo)
+        const myWorkerId = String(user.workerId || '');
+        
+        // Estrai il workerId della prenotazione (può essere un ObjectId o una stringa)
+        const bookingWorkerId = String(
+        (typeof booking.workerId === 'object' ? booking.workerId?._id : booking.workerId) || ''
+        );
 
-    if (myWorkerId && bookingWorkerId) {
-      return myWorkerId === bookingWorkerId;
-    }
+        // Se entrambi gli ID esistono e combaciano, lo staff può modificare l'appuntamento
+        if (myWorkerId && bookingWorkerId && myWorkerId !== 'undefined' && bookingWorkerId !== 'undefined') {
+        return myWorkerId === bookingWorkerId;
+        }
 
-    // Fallback sul nome se non ci sono gli ObjectId
-    return Boolean(
-      user.name && 
-      booking.workerName && 
-      user.name.trim().toLowerCase() === booking.workerName.trim().toLowerCase()
-    );
-  }, [isAdmin, user]);
+        // Fallback disperato sul nome (nel caso in cui ci siano problemi con gli ID)
+        return Boolean(
+        user.name && 
+        booking.workerName && 
+        user.name.trim().toLowerCase() === booking.workerName.trim().toLowerCase()
+        );
+    }, [isAdmin, user]);
+
   const visibleWorkers = isAdmin
     ? workers
     : workers.filter((worker) => String(worker._id) === String(user?.workerId || ''));

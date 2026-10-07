@@ -1,0 +1,11 @@
+{
+  "short_name": "Gestionale",
+  "name": "Atelier Staff",
+  "icons": [
+    { "src": "/icon-admin.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#09090b",
+  "background_color": "#09090b"
+}
