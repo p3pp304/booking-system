@@ -131,7 +131,7 @@ export default function BookingPanel({ isOpen, onClose }) {
         })
         .catch((err) => {
           console.error(err);
-          setError('Impossibile caricare i dati del salone. Riprova.');
+          setError(err.message || 'Impossibile caricare i dati del salone. Riprova.');
         })
         .finally(() => setLoading(false));
     }
@@ -336,10 +336,14 @@ export default function BookingPanel({ isOpen, onClose }) {
               {/* Opzione "Qualsiasi Barbiere" */}
               <div
                 onClick={() => {
+                  if (workers.length === 0) return;
                   setSelectedWorker(null);
                   goToNextStep(3); // Sincronizzato con History / Gesture
                 }}
-                className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                aria-disabled={workers.length === 0}
+                className={`p-4 rounded-xl border transition-all flex items-center justify-between ${
+                  workers.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                } ${
                   selectedWorker === null
                     ? 'border-white bg-zinc-900'
                     : 'border-zinc-900 bg-zinc-900/30 hover:bg-zinc-900/60'
@@ -357,11 +361,17 @@ export default function BookingPanel({ isOpen, onClose }) {
                 {selectedWorker === null && <Check className="w-4 h-4 text-white" />}
               </div>
 
-              <div className="pt-2 pb-1">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-                  I Nostri Maestri Barbieri
-                </span>
-              </div>
+              {workers.length > 0 ? (
+                <div className="pt-2 pb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+                    I Nostri Maestri Barbieri
+                  </span>
+                </div>
+              ) : (
+                <div role="status" className="rounded-xl border border-amber-900/40 bg-amber-950/20 p-4 text-xs leading-relaxed text-amber-200">
+                  Al momento non ci sono operatori attivi per le prenotazioni online. Contatta il salone per assistenza.
+                </div>
+              )}
 
               {workers.map((w) => (
                 <div
@@ -482,6 +492,10 @@ export default function BookingPanel({ isOpen, onClose }) {
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                     <div key={n} className="h-10 rounded-lg bg-zinc-900 animate-pulse" />
                   ))}
+                </div>
+              ) : workers.length === 0 ? (
+                <div role="status" className="rounded-xl border border-amber-900/40 bg-amber-950/20 p-4 text-center text-xs text-amber-200">
+                  Non è possibile calcolare gli orari: non ci sono operatori attivi.
                 </div>
               ) : availableSlots.length === 0 ? (
                 <div className="p-6 text-center border border-zinc-900 rounded-xl bg-zinc-900/20">
