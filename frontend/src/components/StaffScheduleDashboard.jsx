@@ -48,6 +48,7 @@ const normalizeBooking = (booking) => {
     date: toDateInputValue(start),
     time: start.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
     duration: Math.max(0, Math.round((end - start) / 60000)),
+    price: booking.price ?? service?.price ?? null,
     clientName: booking.clientName || booking.customerName || '',
     clientPhone: booking.clientPhone || booking.customerPhone || '',
     serviceId: service?._id || service || '',
@@ -107,6 +108,10 @@ export default function StaffScheduleDashboard() {
       user.name.trim().toLowerCase() === booking.workerName.trim().toLowerCase()
     );
   }, [isAdmin, user]);
+  const visibleWorkers = isAdmin
+    ? workers
+    : workers.filter((worker) => String(worker._id) === String(user?.workerId || ''));
+  const manageableWorkers = isAdmin ? workers : visibleWorkers;
 
   // Stati Modali
   const [activeBooking, setActiveBooking] = useState(null); // Per dettaglio/edit
@@ -364,7 +369,7 @@ export default function StaffScheduleDashboard() {
             Tutti
             </button>
 
-            {workers.map((worker) => {
+            {visibleWorkers.map((worker) => {
             // Supporta sia .id che ._id del backend
             const workerKey = worker.id || worker._id;
             const isSelected = String(selectedWorkerId) === String(workerKey);
@@ -603,7 +608,7 @@ export default function StaffScheduleDashboard() {
       {activeBooking && (
         <BookingDetailModal
           booking={activeBooking}
-          workers={workers}
+          workers={manageableWorkers}
           services={services}
           isAdmin={isAdmin}
           onClose={() => setActiveBooking(null)}
@@ -632,7 +637,7 @@ export default function StaffScheduleDashboard() {
       {isCreateOpen && (
         <CreateBookingModal
           defaultDate={selectedDate}
-          workers={workers}
+          workers={manageableWorkers}
           services={services}
           onClose={() => setIsCreateOpen(false)}
           onCreateManual={async (payload) => {
