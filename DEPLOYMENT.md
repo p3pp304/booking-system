@@ -22,9 +22,17 @@ For a local production build, run `npm run build`, then `npm start`. The backend
 
 ## Hosting frontend separately
 
-For a static frontend host, build `frontend` with `VITE_API_BASE_URL` set to the HTTPS backend URL. Set backend `FRONTEND_ORIGIN` to the exact frontend origin (multiple comma-separated origins are supported). `frontend/public/_redirects` enables SPA route fallback on Netlify; configure the equivalent rewrite to `/index.html` on other hosts.
+For a Vercel frontend and a separately hosted backend:
+
+1. In Vercel project settings, set `VITE_API_BASE_URL` to the backend's HTTPS origin only, for example `https://atelier-api.onrender.com`. Do not add `/api`, a Vercel project path, or a trailing route. Redeploy the frontend after changing it.
+2. In the backend environment, set `FRONTEND_ORIGIN` to the exact public Vercel origins, including scheme and comma-separated aliases, for example `https://booking-system-p3pp304.vercel.app,https://booking-system-two-chi.vercel.app`. Restart the backend after changing it.
+3. In Vercel Deployment Protection, make the production deployment public. A manifest request redirected to `vercel.com/sso-api` means Vercel Authentication is intercepting the PWA file; the app manifest and service worker must be publicly reachable over HTTPS.
+
+If the browser reports a request like `/dhkbdw/api/config`, `VITE_API_BASE_URL` is set to a path instead of the backend origin. The frontend now rejects this configuration and reports the expected format. `frontend/public/_redirects` enables SPA route fallback on Netlify; configure the equivalent rewrite to `/index.html` on other static hosts.
 
 Never put `MONGO_URI` or `JWT_SECRET` in a `VITE_*` variable: frontend environment values are public in the built JavaScript.
+
+If a database URI or JWT secret has been exposed, rotate the database user's password and replace `JWT_SECRET` in the backend environment, then redeploy/restart the backend. Do not paste secrets into source files or chat.
 
 ## Install on a phone
 
