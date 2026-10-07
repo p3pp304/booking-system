@@ -67,6 +67,12 @@ export const adminRequest = async (endpoint, options = {}) => {
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      localStorage.removeItem('staff_token');
+      localStorage.removeItem('auth_token');
+      window.dispatchEvent(new Event('staff-auth-expired'));
+      throw new Error('Sessione scaduta o non valida. Accedi di nuovo all’area staff.');
+    }
     throw new Error(errorData.error || errorData.message || 'Errore durante la richiesta protetta');
   }
 

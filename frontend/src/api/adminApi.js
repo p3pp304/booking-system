@@ -1,11 +1,11 @@
-import { adminRequest } from './api';
+import { adminRequest, publicRequest } from './api';
 
 // ==========================================
 // 1. AUTENTICAZIONE E PROFILO  (sia staff che admin)
 // ==========================================
 
 export const loginAdmin = (credentials) => {
-  return adminRequest('/admin/auth/login', {
+  return publicRequest('/admin/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
   });

@@ -1,7 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 export default function ProtectedRoute() {
-  const token = localStorage.getItem('staff_token');
+  const [token, setToken] = useState(() => localStorage.getItem('staff_token'));
+
+  useEffect(() => {
+    const handleExpiredSession = () => setToken(null);
+    window.addEventListener('staff-auth-expired', handleExpiredSession);
+    return () => window.removeEventListener('staff-auth-expired', handleExpiredSession);
+  }, []);
 
   // 1. Se NON sei autenticato, ti caccia al login
   if (!token) {
