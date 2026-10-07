@@ -36,7 +36,14 @@ export const getBookings = async (req, res) => {
       };
     }
 
-    if (workerId) filter.workerId = workerId;
+    if (req.user?.role === 'staff') {
+      if (!req.user.workerId) {
+        return res.status(403).json({ error: 'Account staff non collegato a un operatore.' });
+      }
+      filter.workerId = req.user.workerId;
+    } else if (workerId) {
+      filter.workerId = workerId;
+    }
     if (status) filter.status = { $in: status.split(',') };
 
     const bookings = await Booking.find(filter)
@@ -118,6 +125,7 @@ export const createManualBooking = async (req, res) => {
       clientName,
       clientPhone,
       serviceId,
+      price: service.price,
       workerId: assignedWorkerId,
       startTime,
       endTime,
@@ -144,6 +152,10 @@ export const updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const { clientName, clientPhone, serviceId, workerId, dateStr, timeStr, notes } = req.body;
+
+    if (req.user?.role === 'staff' && workerId && String(workerId) !== String(req.user.workerId)) {
+      return res.status(403).json({ error: 'Puoi assegnare appuntamenti solo alla tua postazione.' });
+    }
 
     const booking = await Booking.findById(id);
     if (!booking) return res.status(404).json({ error: 'Appuntamento non trovato.' });
@@ -387,9 +399,9 @@ export const createTimeBlock = async (req, res) => {
       endTime: end,
       type: 'block', // etichetta generica per qualsiasi blocco/assenza
       status: 'confirmed',
-      customerName: `[BLOCCO] ${blockReason}`, // visibile a colpo d'occhio sul calendario
-      customerPhone: '',
-      note: blockReason
+      clientName: `[BLOCCO] ${blockReason}`,
+      clientPhone: '',
+      notes: blockReason,
     });
 
     res.status(201).json({
