@@ -43,8 +43,10 @@ export default function App() {
             <Route index element={<Navigate to="schedule" replace />} />
             
             <Route path="schedule" element={<StaffScheduleDashboard />} />
-            <Route path="workers" element={<StaffPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="workers" element={<StaffPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
           </Route>
         </Route>
 
