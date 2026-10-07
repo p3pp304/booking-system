@@ -43,6 +43,10 @@ const bookingSchema = new mongoose.Schema(
         return this.type === 'appointment';
       }
     },
+    price: {
+      type: Number,
+      min: 0,
+    },
     startTime: { 
       type: Date, 
       required: true 
