@@ -1,0 +1,19 @@
+{
+  "name": "atelier-booking-system",
+  "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names API,WEB --prefix-colors blue,green \"npm --prefix backend run dev\" \"npm --prefix frontend run dev -- --host 0.0.0.0\"",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
+    "preview": "npm --prefix frontend run preview -- --host 0.0.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "overrides": {
+    "shell-quote": "^1.12.0"
+  }
+}
