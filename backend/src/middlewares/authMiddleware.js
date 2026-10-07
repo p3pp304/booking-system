@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 /**
  * Verifica il token JWT per tutto il personale (admin + staff)
  */
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -31,10 +32,18 @@ export const verifyToken = (req, res, next) => {
       return res.status(403).json({ error: 'Accesso riservato al personale autorizzato.' });
     }
 
+    if (decoded.role === 'staff' && !decoded.workerId && decoded.userId) {
+      const user = await User.findById(decoded.userId).select('workerId').lean();
+      if (!user?.workerId) {
+        return res.status(403).json({ error: 'Account staff non collegato a un operatore.' });
+      }
+      decoded.workerId = user.workerId.toString();
+    }
+
     // Inietta payload: { userId, role, name, ... }
     req.user = decoded;
 
-    next();
+    return next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Sessione scaduta. Effettua nuovamente il login.' });

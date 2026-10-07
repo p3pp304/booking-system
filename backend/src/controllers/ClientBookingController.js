@@ -206,6 +206,7 @@ export const createBooking = async (req, res) => {
       clientName: normalizedName,
       clientPhone: normalizedPhone,
       serviceId,
+      price: service.price,
       workerId: assignedWorkerId,
       startTime,
       endTime,

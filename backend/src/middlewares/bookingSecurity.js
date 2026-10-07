@@ -1,5 +1,14 @@
 // middleware/bookingSecurity.js
 import Booking from '../models/Booking.js';
+import User from '../models/User.js';
+
+const resolveWorkerId = async (user) => {
+  if (user.workerId) return String(user.workerId);
+  const userId = user.userId || user.id || user._id;
+  if (!userId) return '';
+  const account = await User.findById(userId).select('workerId').lean();
+  return account?.workerId ? String(account.workerId) : '';
+};
 
 export const checkBookingOwnership = async (req, res, next) => {
   try {
@@ -11,17 +20,17 @@ export const checkBookingOwnership = async (req, res, next) => {
       return next();
     }
 
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).populate('workerId', 'name');
     if (!booking) {
       return res.status(404).json({ message: 'Appuntamento non trovato.' });
     }
 
-    const userWorkerId = String(user.workerId || user._id);
-    const bookingWorkerId = String(booking.workerId);
+    const userWorkerId = await resolveWorkerId(user);
+    const bookingWorkerId = String(booking.workerId?._id || booking.workerId || '');
 
     // Blocca se non c'è corrispondenza né di ID né di nome
     const isOwner = bookingWorkerId === userWorkerId || 
-                    (booking.workerName && user.name && booking.workerName.toLowerCase() === user.name.toLowerCase());
+                    (booking.workerId?.name && user.name && booking.workerId.name.toLowerCase() === user.name.toLowerCase());
 
     if (!isOwner) {
       return res.status(403).json({ 

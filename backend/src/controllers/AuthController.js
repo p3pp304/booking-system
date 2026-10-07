@@ -27,7 +27,13 @@ export const login = async (req, res) => {
 
     const secret = process.env.JWT_SECRET || 'super_secret_jwt_key';
     const token = jwt.sign(
-      { userId: user._id, role: user.role, name: user.name },
+      {
+        userId: user._id.toString(),
+        id: user._id.toString(),
+        workerId: user.workerId?.toString() || null,
+        role: user.role,
+        name: user.name,
+      },
       secret,
       { expiresIn: '30d' }
     );
@@ -39,7 +45,8 @@ export const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        workerId: user.workerId?.toString() || null,
       }
     });
   } catch (error) {
@@ -81,22 +88,30 @@ export const getMyProfile = async (req, res) => {
  */
 export const updateMyProfile = async (req, res) => {
   try {
-    const { name, photoUrl, bio, phone } = req.body;
-    const user = await User.findById(req.user.userId);
+    const { name, email, phone } = req.body;
+    const user = await User.findById(req.user.userId).select('-password');
 
     if (!user) {
       return res.status(404).json({ error: 'Utente non trovato.' });
     }
 
-    if (name) user.name = name;
+    if (name) user.name = name.trim();
+    if (email) {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail !== user.email) {
+        const emailExists = await User.exists({ email: normalizedEmail, _id: { $ne: user._id } });
+        if (emailExists) {
+          return res.status(409).json({ error: 'Questa email è già associata a un account.' });
+        }
+        user.email = normalizedEmail;
+      }
+    }
+    if (phone !== undefined) user.phone = phone.trim();
     await user.save();
 
     if (user.workerId) {
       const allowedWorkerUpdates = {};
-      if (name) allowedWorkerUpdates.name = name;
-      if (photoUrl !== undefined) allowedWorkerUpdates.photoUrl = photoUrl;
-      if (bio !== undefined) allowedWorkerUpdates.bio = bio;
-      if (phone !== undefined) allowedWorkerUpdates.phone = phone;
+      if (name) allowedWorkerUpdates.name = name.trim();
 
       await Worker.findByIdAndUpdate(user.workerId, allowedWorkerUpdates);
     }
@@ -115,7 +130,7 @@ export const updateMyProfile = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req.user.userId).select('+password');
 
     if (!user) {
       return res.status(404).json({ error: 'Utente non trovato.' });
@@ -126,7 +141,7 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ error: 'La password attuale non è corretta.' });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = newPassword;
     await user.save();
 
     res.json({ success: true, message: 'Password aggiornata con successo.' });
