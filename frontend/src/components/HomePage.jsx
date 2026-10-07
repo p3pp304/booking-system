@@ -11,7 +11,6 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import BookingPanel from './BookingPanel';
-import InstallAppNotice from './InstallAppNotice';
 import { fetchServices, fetchPublicConfig } from '../api/publicApi';
 import Footer from './Footer';
 
@@ -115,8 +114,6 @@ export default function HomePage() {
             <span>Gestisci prenotazione</span>
         </button>
         </header>
-
-        <InstallAppNotice />
 
         {/* 2. GALLERIA TOUCH ORIZZONTALE (FOTO CHE SCORRONO) */}
         <main>

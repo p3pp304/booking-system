@@ -7,6 +7,7 @@ import StaffScheduleDashboard from './components/StaffScheduleDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import SettingsPage from './components/SettingPage';
 import StaffPage from './components/StaffAndServices';
+import InstallAppNotice from './components/InstallAppNotice';
 
 // Verifica la modalità impostata su Vercel (.env)
 const isAdminApp = import.meta.env.VITE_APP_MODE === 'admin';
@@ -14,6 +15,7 @@ const isAdminApp = import.meta.env.VITE_APP_MODE === 'admin';
 export default function App() {
   return (
     <BrowserRouter>
+      <InstallAppNotice />
       <Routes>
         {/* Rotta iniziale: se siamo sull'app Admin va subito a /admin/schedule, altrimenti mostra HomePage */}
         <Route 
