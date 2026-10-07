@@ -16,21 +16,50 @@ dotenv.config();
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 const frontendDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../frontend/dist');
-const allowedOrigins = (process.env.FRONTEND_ORIGIN || '')
+
+// Parsing delle origini definite nelle variabili d'ambiente
+const envOrigins = (process.env.FRONTEND_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
   .map((origin) => {
     const withProtocol = /^https?:\/\//i.test(origin) ? origin : `https://${origin}`;
-    return new URL(withProtocol).origin;
+    try {
+      return new URL(withProtocol).origin;
+    } catch {
+      return origin;
+    }
   });
 
-app.use(cors({
+// Configurazione CORS
+const corsOptions = {
   origin(origin, callback) {
-    const allowed = !origin || process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin);
-    callback(null, allowed);
+    // Consenti chiamate senza origin (es. curl, postman, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // In sviluppo consenti tutto
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+
+    // In produzione: consenti se presente nelle env, localhost, o se appartiene a vercel.app
+    const isAllowedEnv = envOrigins.includes(origin);
+    const isVercel = origin.endsWith('.vercel.app');
+    const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+
+    if (isAllowedEnv || isVercel || isLocalhost) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origine CORS bloccata: ${origin}`));
   },
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+// Applica CORS e gestisci esplicitamente il preflight OPTIONS
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
