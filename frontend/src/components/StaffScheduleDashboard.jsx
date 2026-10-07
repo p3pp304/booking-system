@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
-  ChevronLeft, 
-  ChevronRight, 
   Calendar as CalendarIcon, 
   Plus, 
   Clock, 
@@ -10,7 +8,6 @@ import {
   CheckCircle2, 
   XCircle, 
   AlertCircle,
-  MoreVertical,
   User,
   Scissors,
   Loader2,
@@ -19,6 +16,7 @@ import {
 } from 'lucide-react';
 import {
   fetchAdminBookings,
+  fetchAdminProfile,
   fetchAllWorkers,
   fetchAllServicesAdmin,
   fetchBookingReminderLink,
@@ -95,7 +93,7 @@ export default function StaffScheduleDashboard() {
     if (isAdmin) return true;
     if (!user || !booking) return false;
 
-    const myWorkerId = String(currentUser.workerId || user.id || user._id || '');
+    const myWorkerId = String(user.workerId || user.id || user._id || '');
     const bookingWorkerId = String(booking.workerId?._id || booking.workerId || '');
 
     if (myWorkerId && bookingWorkerId) {
@@ -110,10 +108,6 @@ export default function StaffScheduleDashboard() {
     );
   }, [isAdmin, user]);
 
-  const workerFilters = [
-    { id: 'all', name: 'Tutti' },
-    ...workers.map((worker) => ({ id: String(worker._id), name: worker.name })),
-  ];
   // Stati Modali
   const [activeBooking, setActiveBooking] = useState(null); // Per dettaglio/edit
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -162,13 +156,6 @@ export default function StaffScheduleDashboard() {
         .reduce((sum, b) => sum + (Number(b.price) || 25), 0); // fallback a 25 se price non è valorizzato
     }, [bookings]);
 
-
-  // Cambio Giorno Rapido
-  const handleDayShift = (days) => {
-    const current = new Date(`${selectedDate}T00:00:00`);
-    current.setDate(current.getDate() + days);
-    setSelectedDate(toDateInputValue(current));
-  };
 
   // Funzione Invio WhatsApp
   const handleSendWhatsAppReminder = async (booking) => {
