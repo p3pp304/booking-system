@@ -309,16 +309,22 @@ export default function StaffAndServicesPage() {
                     </div>
 
                     {/* Prezzo Badge */}
+                  {service.price !== null && service.price !== undefined && Number.isFinite(Number(service.price)) && (
                     <span className="font-mono font-bold text-emerald-400 text-xs bg-emerald-950/40 border border-emerald-800/40 px-2.5 py-1 rounded-xl shrink-0">
-                      {service.price ? `${Number(service.price).toFixed(2)} €` : '0.00 €'}
+                      {Number(service.price).toFixed(2)} €
                     </span>
+                  )}
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs text-zinc-400">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                      {service.durationMinutes || 30} min
-                    </span>
+                    {service.durationMinutes !== null &&
+                      service.durationMinutes !== undefined &&
+                      Number.isFinite(Number(service.durationMinutes)) && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                          {service.durationMinutes} min
+                        </span>
+                      )}
 
                     <div className="flex items-center gap-1.5">
                       <button
@@ -465,8 +471,8 @@ function WorkerModal({ worker, onClose, onSave }) {
 // ==========================================
 function ServiceModal({ service, onClose, onSave }) {
   const [name, setName] = useState(service?.name || '');
-  const [price, setPrice] = useState(service?.price || '25.00');
-  const [durationMinutes, setDurationMinutes] = useState(service?.durationMinutes || 30);
+  const [price, setPrice] = useState(service?.price === undefined || service?.price === null ? '' : String(service.price));
+  const [durationMinutes, setDurationMinutes] = useState(service?.durationMinutes === undefined || service?.durationMinutes === null ? '' : String(service.durationMinutes));
   const [description, setDescription] = useState(service?.description || '');
   const [submitting, setSubmitting] = useState(false);
 
@@ -475,8 +481,8 @@ function ServiceModal({ service, onClose, onSave }) {
     setSubmitting(true);
     await onSave({
       name,
-      price: parseFloat(price) || 0,
-      durationMinutes: parseInt(durationMinutes, 10) || 30,
+      price: Number(price),
+      durationMinutes: Number.parseInt(durationMinutes, 10),
       description
     });
     setSubmitting(false);
@@ -522,10 +528,12 @@ function ServiceModal({ service, onClose, onSave }) {
             <div>
               <label className="text-zinc-400 font-medium">Durata (Minuti)</label>
               <select
+                required
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(e.target.value)}
                 className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-zinc-700"
               >
+                <option value="">Seleziona durata</option>
                 <option value="15">15 min</option>
                 <option value="30">30 min</option>
                 <option value="45">45 min</option>
