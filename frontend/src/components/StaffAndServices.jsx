@@ -30,6 +30,7 @@ export default function StaffAndServicesPage() {
   const [workers, setWorkers] = useState([]);
   const [services, setServices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   // Stati Modali Staff
   const [workerModalOpen, setWorkerModalOpen] = useState(false);
@@ -43,6 +44,7 @@ export default function StaffAndServicesPage() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError('');
       const [workersRes, servicesRes] = await Promise.all([
         fetchAllWorkers(),
         fetchAllServicesAdmin()
@@ -51,6 +53,7 @@ export default function StaffAndServicesPage() {
       setServices(Array.isArray(servicesRes) ? servicesRes : servicesRes?.services || []);
     } catch (err) {
       console.error('Errore nel caricamento dati:', err);
+      setLoadError(err.message || 'Impossibile caricare operatori e servizi.');
     } finally {
       setIsLoading(false);
     }
@@ -65,12 +68,16 @@ export default function StaffAndServicesPage() {
   // ==========================================
   const handleToggleWorker = async (id) => {
     try {
-      await toggleWorkerActive(id);
+      const result = await toggleWorkerActive(id);
       setWorkers((prev) =>
-        prev.map((w) => ((w.id || w._id) === id ? { ...w, active: !w.active } : w))
+        prev.map((worker) => (
+          String(worker._id || worker.id) === String(id)
+            ? result?.worker || { ...worker, isActive: !worker.isActive }
+            : worker
+        ))
       );
     } catch (err) {
-      alert('Errore nel cambio stato operatore');
+      alert(err.message || 'Errore nel cambio stato operatore');
     }
   };
 
@@ -80,7 +87,7 @@ export default function StaffAndServicesPage() {
       await deleteWorker(id);
       setWorkers((prev) => prev.filter((w) => (w.id || w._id) !== id));
     } catch (err) {
-      alert('Errore durante l\'eliminazione del collaboratore');
+      alert(err.message || 'Errore durante l\'eliminazione del collaboratore');
     }
   };
 
@@ -96,7 +103,7 @@ export default function StaffAndServicesPage() {
       setWorkerModalOpen(false);
       setEditingWorker(null);
     } catch (err) {
-      alert('Errore nel salvataggio operatore');
+      alert(err.message || 'Errore nel salvataggio operatore');
     }
   };
 
@@ -109,7 +116,7 @@ export default function StaffAndServicesPage() {
       await deleteService(id);
       setServices((prev) => prev.filter((s) => (s.id || s._id) !== id));
     } catch (err) {
-      alert('Errore durante l\'eliminazione del servizio');
+      alert(err.message || 'Errore durante l\'eliminazione del servizio');
     }
   };
 
@@ -125,7 +132,7 @@ export default function StaffAndServicesPage() {
       setServiceModalOpen(false);
       setEditingService(null);
     } catch (err) {
-      alert('Errore nel salvataggio del servizio');
+      alert(err.message || 'Errore nel salvataggio del servizio');
     }
   };
 
@@ -158,6 +165,7 @@ export default function StaffAndServicesPage() {
       </div>
 
       {/* 2. Barra Tab Mobile-First */}
+      {loadError && <p role="alert" className="rounded-xl border border-rose-900/50 bg-rose-950/30 px-3 py-2 text-xs text-rose-300">{loadError}</p>}
       <div className="flex p-1 bg-zinc-900/80 border border-zinc-800 rounded-2xl">
         <button
           type="button"
@@ -206,7 +214,7 @@ export default function StaffAndServicesPage() {
                 <div
                   key={workerId}
                   className={`p-4 rounded-3xl border flex flex-col justify-between gap-3.5 transition-all ${
-                    worker.active
+                    worker.isActive
                       ? 'bg-zinc-950 border-zinc-900'
                       : 'bg-zinc-950/40 border-zinc-900/60 opacity-60'
                   }`}
@@ -217,7 +225,7 @@ export default function StaffAndServicesPage() {
                         <Scissors className="w-4 h-4 text-zinc-300" />
                         <span
                           className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950 ${
-                            worker.active ? 'bg-emerald-500' : 'bg-zinc-600'
+                            worker.isActive ? 'bg-emerald-500' : 'bg-zinc-600'
                           }`}
                         />
                       </div>
@@ -231,27 +239,21 @@ export default function StaffAndServicesPage() {
                     <button
                       type="button"
                       onClick={() => handleToggleWorker(workerId)}
-                      title={worker.active ? 'Disattiva' : 'Attiva'}
+                      title={worker.isActive ? 'Disattiva' : 'Attiva'}
                       className={`p-2 rounded-xl border text-xs transition-colors ${
-                        worker.active
+                        worker.isActive
                           ? 'bg-emerald-950/30 text-emerald-400 border-emerald-800/40 hover:bg-emerald-900/40'
                           : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-white'
                       }`}
                     >
-                      {worker.active ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
+                      {worker.isActive ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
                     </button>
                   </div>
 
                   {/* Recap Telefono & Turno */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="flex items-center gap-1.5 p-2 rounded-xl bg-zinc-900/50 border border-zinc-900 text-zinc-300 truncate">
-                      <Phone className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                      <span className="truncate">{worker.phone || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 p-2 rounded-xl bg-zinc-900/50 border border-zinc-900 text-zinc-300 truncate">
-                      <Clock className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                      <span className="truncate">{worker.hours || '09:00 - 19:30'}</span>
-                    </div>
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-zinc-900 bg-zinc-900/50 p-2 text-[11px] text-zinc-300">
+                    <span>{worker.isActive ? 'Attivo e prenotabile' : 'Non disponibile alle prenotazioni'}</span>
+                    <span className="h-4 w-4 shrink-0 rounded border border-zinc-700" style={{ backgroundColor: worker.color || '#2563eb' }} aria-label="Colore agenda" />
                   </div>
 
                   {/* Azioni Modifica / Elimina */}
@@ -315,7 +317,7 @@ export default function StaffAndServicesPage() {
                   <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs text-zinc-400">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                      {service.duration || 30} min
+                      {service.durationMinutes || 30} min
                     </span>
 
                     <div className="flex items-center gap-1.5">
@@ -378,16 +380,21 @@ export default function StaffAndServicesPage() {
 // ==========================================
 function WorkerModal({ worker, onClose, onSave }) {
   const [name, setName] = useState(worker?.name || '');
-  const [role, setRole] = useState(worker?.role || 'Senior Barber');
-  const [phone, setPhone] = useState(worker?.phone || '');
-  const [hours, setHours] = useState(worker?.hours || '09:00 - 19:30');
+  const [color, setColor] = useState(worker?.color || '#2563eb');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    await onSave({ name, role, phone, hours });
-    setSubmitting(false);
+    try {
+      await onSave(worker
+        ? { name: name.trim(), color }
+        : { name: name.trim(), color, email: email.trim().toLowerCase(), password });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -413,40 +420,23 @@ function WorkerModal({ worker, onClose, onSave }) {
             />
           </div>
 
-          <div>
-            <label className="text-zinc-400 font-medium">Ruolo / Livello</label>
-            <input
-              type="text"
-              required
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder="Es. Master Barber / Stylist"
-              className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-zinc-700"
-            />
-          </div>
+          <label className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-zinc-300">
+            Colore agenda
+            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-8 w-12 cursor-pointer rounded border-0 bg-transparent" />
+          </label>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-zinc-400 font-medium">Telefono</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+39 340 1234567"
-                className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-zinc-700"
-              />
-            </div>
-            <div>
-              <label className="text-zinc-400 font-medium">Orario Turno</label>
-              <input
-                type="text"
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                placeholder="09:00 - 19:30"
-                className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-zinc-700"
-              />
-            </div>
-          </div>
+          {!worker && (
+            <>
+              <div>
+                <label className="text-zinc-400 font-medium">Email accesso staff</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@salone.it" className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-zinc-700" />
+              </div>
+              <div>
+                <label className="text-zinc-400 font-medium">Password iniziale</label>
+                <input type="password" required minLength={6} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-zinc-700" />
+              </div>
+            </>
+          )}
 
           <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-zinc-900">
             <button
@@ -476,7 +466,7 @@ function WorkerModal({ worker, onClose, onSave }) {
 function ServiceModal({ service, onClose, onSave }) {
   const [name, setName] = useState(service?.name || '');
   const [price, setPrice] = useState(service?.price || '25.00');
-  const [duration, setDuration] = useState(service?.duration || 30);
+  const [durationMinutes, setDurationMinutes] = useState(service?.durationMinutes || 30);
   const [description, setDescription] = useState(service?.description || '');
   const [submitting, setSubmitting] = useState(false);
 
@@ -486,7 +476,7 @@ function ServiceModal({ service, onClose, onSave }) {
     await onSave({
       name,
       price: parseFloat(price) || 0,
-      duration: parseInt(duration, 10) || 30,
+      durationMinutes: parseInt(durationMinutes, 10) || 30,
       description
     });
     setSubmitting(false);
@@ -532,8 +522,8 @@ function ServiceModal({ service, onClose, onSave }) {
             <div>
               <label className="text-zinc-400 font-medium">Durata (Minuti)</label>
               <select
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(e.target.value)}
                 className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-zinc-700"
               >
                 <option value="15">15 min</option>
