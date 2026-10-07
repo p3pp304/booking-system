@@ -7,7 +7,7 @@ if (configuredApiUrl) {
   try {
     const parsedUrl = new URL(configuredApiUrl);
     if (!['http:', 'https:'].includes(parsedUrl.protocol) || parsedUrl.pathname !== '/' || parsedUrl.search || parsedUrl.hash) {
-      throw new Error('Use only the backend origin, without a path such as /api or /dhkbdw.');
+      throw new Error('Use only the backend origin, without a path such as /api.');
     }
     apiBaseUrl = parsedUrl.origin;
   } catch (error) {
