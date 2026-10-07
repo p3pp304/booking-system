@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { getBookingByCode, cancelBookingByCode } from '../api/publicApi';
 import { removeBookingCode } from '../helpers/bookingStorage';
+import { formatBusinessDate, formatBusinessTime } from '../helpers/businessTime';
 import ForgotCodeFallback from './ForgotCodeFallback';
 
 export default function ManageBookingPage() {
@@ -132,7 +133,7 @@ export default function ManageBookingPage() {
     };
 
   const formattedDate = bookingData?.startTime
-    ? new Date(bookingData.startTime).toLocaleDateString('it-IT', {
+    ? formatBusinessDate(bookingData.startTime, {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
@@ -141,10 +142,7 @@ export default function ManageBookingPage() {
     : '';
 
   const formattedTime = bookingData?.startTime
-    ? new Date(bookingData.startTime).toLocaleTimeString('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+    ? formatBusinessTime(bookingData.startTime)
     : '';
 
   return (

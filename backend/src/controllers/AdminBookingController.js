@@ -3,7 +3,7 @@ import Booking from '../models/Booking.js';
 import Worker from '../models/Worker.js';
 import Service from '../models/Service.js';
 import businessConfig from '../config/business.config.js';
-import { generateWhatsAppLinks } from '../services/reminder.service.js';
+import { businessLocalToUtcDate, businessDateTimeLocalToUtcDate } from '../utils/dateTime.js';
 
 
 const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -74,9 +74,10 @@ export const createManualBooking = async (req, res) => {
     const service = await Service.findById(serviceId);
     if (!service) return res.status(404).json({ error: 'Servizio non trovato.' });
 
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const startTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    // dateStr + timeStr vengono inviate in orario business (Europe/Rome).
+    // Le convertiamo esplicitamente in UTC per garantire il corretto
+    // istante salvato nel database, indipendentemente dal timezone del server.
+    const startTime = businessLocalToUtcDate(dateStr, timeStr);
     const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
 
     let assignedWorkerId = workerId || null;
@@ -163,18 +164,21 @@ export const updateBooking = async (req, res) => {
     let startTime = booking.startTime;
     let endTime = booking.endTime;
     let finalServiceId = booking.serviceId;
+    let finalPrice = booking.price;
 
     if (serviceId) {
       const service = await Service.findById(serviceId);
       if (!service) return res.status(404).json({ error: 'Servizio non trovato.' });
       finalServiceId = service._id;
+      finalPrice = service.price;
       endTime = new Date(new Date(startTime).getTime() + service.durationMinutes * 60 * 1000);
     }
 
     if (dateStr && timeStr) {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      startTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      // dateStr + timeStr vengono inviate in orario business (Europe/Rome).
+      // Le convertiamo esplicitamente in UTC per garantire il corretto
+      // istante salvato nel database, indipendentemente dal timezone del server.
+      const startTime = businessLocalToUtcDate(dateStr, timeStr);
       const service = await Service.findById(finalServiceId);
       endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
     }
@@ -194,12 +198,20 @@ export const updateBooking = async (req, res) => {
       }
     }
 
-    booking.clientName = clientName || booking.clientName;
-    booking.clientPhone = clientPhone || booking.clientPhone;
-    booking.serviceId = finalServiceId;
-    booking.workerId = finalWorkerId;
-    booking.startTime = startTime;
-    booking.endTime = endTime;
+    // Blocchi orari: soltanto cancellazione definitiva, MAI modifica campi
+    if (booking.type === 'block') {
+      return res.status(409).json({
+        error: 'Impossibile modificare un blocco orario. I blocchi possono essere eliminati SOLamente tramite "Elimina definitivamente".'
+      });
+    }
+
+    booking.clientName = clientName !== undefined ? clientName : booking.clientName;
+    booking.clientPhone = clientPhone !== undefined ? clientPhone : booking.clientPhone;
+    booking.serviceId = serviceId !== undefined ? finalServiceId : booking.serviceId;
+    booking.price = serviceId !== undefined ? finalPrice : booking.price;
+    booking.workerId = workerId !== undefined ? finalWorkerId : booking.workerId;
+    booking.startTime = dateStr && timeStr ? startTime : booking.startTime;
+    booking.endTime = dateStr && timeStr ? endTime : booking.endTime;
     if (notes !== undefined) booking.notes = notes;
 
     await booking.save();
@@ -362,8 +374,13 @@ export const createTimeBlock = async (req, res) => {
       return res.status(400).json({ error: 'Operatore, data inizio e data fine sono obbligatori.' });
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    // startDate/endDate provengono da <input type="datetime-local">, che
+    // restituisce un valore in orario business locale (Europe/Rome, senza
+    // offset UTC). Le convertiamo esplicitamente in un istante UTC vero
+    // prima di salvarle nel database, altrimenti il "navegador locale"
+    // del server produce istanti errati.
+    const start = businessDateTimeLocalToUtcDate(startDate);
+    const end = businessDateTimeLocalToUtcDate(endDate);
 
     if (start >= end) {
       return res.status(400).json({ error: 'La data di inizio deve precedere la data di fine.' });

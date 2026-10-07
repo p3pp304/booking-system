@@ -171,6 +171,11 @@ export default function RevenueAnalytics({ selectedDate, onClose }) {
               <span className="text-xs text-zinc-500 font-medium">
                 {stats?.totalCount || 0} appuntamenti eseguiti
               </span>
+              {stats?.unpricedCount > 0 && (
+                <span className="mt-1 text-[11px] text-amber-400">
+                  {stats.unpricedCount} appuntamenti esclusi: prezzo non salvato
+                </span>
+              )}
             </div>
 
             {/* Metriche Rapide */}
@@ -179,7 +184,9 @@ export default function RevenueAnalytics({ selectedDate, onClose }) {
                 <Receipt className="w-4 h-4 text-zinc-400 shrink-0" />
                 <div>
                   <span className="text-[10px] text-zinc-500 block">Scontrino Medio</span>
-                  <span className="font-mono font-bold text-white text-xs">{stats?.averageTicket || '0.00'} €</span>
+                  <span className="font-mono font-bold text-white text-xs">
+                    {Number(stats?.pricedCount) > 0 ? `${Number(stats.averageTicket).toFixed(2)} €` : 'Non disponibile'}
+                  </span>
                 </div>
               </div>
               <div className="p-2.5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 flex items-center gap-2.5">

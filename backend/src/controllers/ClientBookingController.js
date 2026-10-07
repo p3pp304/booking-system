@@ -2,6 +2,7 @@ import Booking from '../models/Booking.js';
 import Worker from '../models/Worker.js';
 import Service from '../models/Service.js';
 import { getAvailableSlots } from '../services/availability.service.js';
+import { businessLocalToUtcDate } from '../utils/dateTime.js';
 import businessConfig from '../config/business.config.js';
 import { cleanAndValidatePhone, validateFullName } from '../utils/validators.js';
 import { generateWhatsAppLinks, createGoogleCalendarUrl } from '../services/reminder.service.js';
@@ -122,9 +123,13 @@ export const createBooking = async (req, res) => {
     }
 
     // 2. Calcolo orari di inizio e fine
+    // Le date/time vengono inviate dal frontend come YYYY-MM-DD + HH:mm
+    // in orario business (Europe/Rome). Le convertiamo esplicitamente in UTC
+    // per garantire che il valore salvato nel DB sia sempre l'istante corretto,
+    // indipendentemente dal timezone del server.
     const [year, month, day] = dateStr.split('-').map(Number);
     const [hours, minutes] = timeStr.split(':').map(Number);
-    const startTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    const startTime = businessLocalToUtcDate(dateStr, timeStr);
     const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
 
     // Verifica preavviso minimo
