@@ -5,12 +5,13 @@ export const getAdminRevenue = async (req, res) => {
     const { period = 'month', year, month, date } = req.query;
 
     // 1. Trova la data del primo booking assoluto per sapere da quale anno partire
-    const firstBooking = await Booking.findOne({ 
-      status: { $in: ['confirmed', 'confermato'] } 
-    }).sort({ date: 1 }).select('date');
+    const firstBooking = await Booking.findOne({
+      status: { $in: ['confirmed', 'completed', 'confermato'] },
+      type: { $ne: 'block' },
+    }).sort({ startTime: 1 }).select('startTime');
 
-    const startYear = firstBooking?.date 
-      ? new Date(firstBooking.date).getFullYear() 
+    const startYear = firstBooking?.startTime
+      ? new Date(firstBooking.startTime).getFullYear()
       : new Date().getFullYear();
 
     // 2. Calcola l'intervallo temporale
@@ -20,31 +21,55 @@ export const getAdminRevenue = async (req, res) => {
 
     if (period === 'day') {
       const dayStr = date || new Date().toISOString().split('T')[0];
-      startDate = new Date(`${dayStr}T00:00:00.000Z`);
-      endDate = new Date(`${dayStr}T23:59:59.999Z`);
+      const [dayYear, dayMonth, dayOfMonth] = dayStr.split('-').map(Number);
+      startDate = new Date(dayYear, dayMonth - 1, dayOfMonth, 0, 0, 0, 0);
+      endDate = new Date(dayYear, dayMonth - 1, dayOfMonth, 23, 59, 59, 999);
     } else if (period === 'month') {
       startDate = new Date(Date.UTC(targetYear, targetMonth - 1, 1, 0, 0, 0));
       endDate = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59, 999));
     } else if (period === 'year') {
       startDate = new Date(Date.UTC(targetYear, 0, 1, 0, 0, 0));
       endDate = new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59, 999));
+    } else {
+      return res.status(400).json({ error: 'Periodo non valido.' });
     }
 
-    // 3. Aggregazione sul DB
+    // 3. Aggregazione: usa lo snapshot prezzo e fallback ai dati servizio per i record legacy.
     const matchFilter = {
-      status: { $in: ['confirmed', 'confermato'] },
+      status: { $in: ['confirmed', 'completed', 'confermato'] },
       type: { $ne: 'block' },
-      date: {
-        $gte: startDate.toISOString().split('T')[0],$lte: endDate.toISOString().split('T')[0]
-      }
+      startTime: { $gte: startDate, $lte: endDate },
     };
 
     const stats = await Booking.aggregate([
       { $match: matchFilter },
       {
+        $lookup: {
+          from: 'services',
+          localField: 'serviceId',
+          foreignField: '_id',
+          as: 'service',
+        },
+      },
+      {
+        $lookup: {
+          from: 'workers',
+          localField: 'workerId',
+          foreignField: '_id',
+          as: 'worker',
+        },
+      },
+      {
         $group: {
-          _id: '$workerName',
-          totalRevenue: { $sum: { $ifNull: ['$price', 25] } },
+          _id: { $ifNull: [{ $arrayElemAt: ['$worker.name', 0] }, 'Non assegnato'] },
+          totalRevenue: {
+            $sum: {
+              $ifNull: [
+                '$price',
+                { $ifNull: [{ $arrayElemAt: ['$service.price', 0] }, 25] },
+              ],
+            },
+          },
           totalBookings: { $sum: 1 }
         }
       }
