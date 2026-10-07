@@ -96,7 +96,7 @@ export default function HomePage() {
     <div className="min-h-dvh bg-zinc-950 text-zinc-100 flex flex-col font-sans select-none pb-24">
         
         {/* 1. HEADER MINIMALE */}
-        <header className="sticky top-0 z-40 relative safe-area-top bg-zinc-950/90 backdrop-blur-md border-b border-zinc-900 px-5 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-40 safe-area-top bg-zinc-950/90 backdrop-blur-md border-b border-zinc-900 px-5 py-4 flex items-center justify-between">
             <div 
                 onClick={() => navigate('/')} 
             className="flex items-center gap-2 cursor-pointer select-none transition-transform duration-200 ease-out hover:scale-105 active:scale-95 origin-left lg:absolute lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:origin-center"
@@ -130,14 +130,14 @@ export default function HomePage() {
                 {SALON_GALLERY.map((photo, i) => (
                 <div 
                     key={i} 
-                    className="snap-center shrink-0 w-[82vw] sm:w-[380px] h-[360px] relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800/80"
+                    className="snap-center shrink-0 w-[82vw] sm:w-95 h-90 relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800/80"
                 >
                     <img 
                     src={photo.url} 
                     alt={photo.caption} 
                     className="w-full h-full object-cover grayscale contrast-[1.15] hover:grayscale-0 transition-all duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
                     
                     <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                     <span className="text-xs uppercase tracking-widest font-semibold text-zinc-200">
