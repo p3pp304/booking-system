@@ -19,7 +19,11 @@ const frontendDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../fro
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
-  .filter(Boolean);
+  .filter(Boolean)
+  .map((origin) => {
+    const withProtocol = /^https?:\/\//i.test(origin) ? origin : `https://${origin}`;
+    return new URL(withProtocol).origin;
+  });
 
 app.use(cors({
   origin(origin, callback) {
