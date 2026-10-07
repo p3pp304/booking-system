@@ -26,7 +26,7 @@ const seedDev = async () => {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connesso a MongoDB Atlas.');
 
-    // 1. Wipe completo per pulire i test precedenti
+    // 1. Wipe completo
     await Promise.all([
       User.deleteMany({}),
       Worker.deleteMany({}),
@@ -35,7 +35,7 @@ const seedDev = async () => {
     ]);
     console.log('🧹 Database ripulito interamente.');
 
-    // 2. Barbieri di test
+    // 2. Barbieri (Entità fisica sul calendario - non dipendono da nulla)
     const workers = await Worker.create([
       { name: 'Marco Rossi', color: '#2563eb', isActive: true, isDeleted: false },
       { name: 'Luca Bianchi', color: '#d97706', isActive: true, isDeleted: false },
@@ -43,55 +43,82 @@ const seedDev = async () => {
     ]);
     console.log('💈 3 Barbieri creati.');
 
-    // 3. Servizi di test
+    // 3. Utenti (Auth / Login - puntano a Worker tramite workerId)
+    const usersToCreate = [
+      new User({
+        name: 'Admin Barberia',
+        email: 'admin@barberia.it',
+        phone: '+393330001122',
+        password: 'Admin1234!',
+        role: 'admin',
+        workerId: null // L'admin non lavora su una poltrona specifica
+      }),
+      new User({
+        name: 'Marco Rossi',
+        email: 'marco@barberia.it',
+        phone: '+393331112233',
+        password: 'Staff1234!',
+        role: 'staff',
+        workerId: workers[0]._id // Assegnato subito in fase di creazione
+      }),
+      new User({
+        name: 'Luca Bianchi',
+        email: 'luca@barberia.it',
+        phone: '+393334445566',
+        password: 'Staff1234!',
+        role: 'staff',
+        workerId: workers[1]._id
+      }),
+      new User({
+        name: 'Antonio Esposito',
+        email: 'antonio@barberia.it',
+        phone: '+393337778899',
+        password: 'Staff1234!',
+        role: 'staff',
+        workerId: workers[2]._id
+      })
+    ];
+
+    // Salvataggio con hook pre('save') per generare l'hash bcrypt
+    for (const user of usersToCreate) {
+      await user.save();
+    }
+    console.log('👤 4 Utenti creati con password hashata (1 Admin, 3 Staff).');
+
+    // 4. Servizi di test
     const services = await Service.create([
       {
         name: 'Taglio Capelli & Styling',
         description: 'Taglio classico o moderno con rifiniture.',
         durationMinutes: 30,
-        price: 22.0
+        price: 22.0,
+        category: 'Capelli'
       },
       {
         name: 'Rasatura Barba Tradizionale',
         description: 'Panno caldo e lama libera.',
         durationMinutes: 30,
-        price: 18.0
+        price: 18.0,
+        category: 'Barba'
       },
       {
         name: 'Combo Taglio + Barba',
         description: 'Esperienza completa relax e grooming.',
         durationMinutes: 60,
-        price: 35.0
+        price: 35.0,
+        category: 'Completo'
       },
       {
         name: 'Rifinitura Barba Rapida',
         description: 'Regolazione contorni guance e collo.',
         durationMinutes: 15,
-        price: 12.0
+        price: 12.0,
+        category: 'Barba'
       }
     ]);
     console.log('✂️ 4 Servizi creati.');
 
-    // 4. Utenti: Admin e Staff
-    await User.create([
-      {
-        name: 'Titolare Boss',
-        email: 'admin@barberia.it',
-        password: 'Admin1234!',
-        role: 'admin',
-        workerId: workers[0]._id
-      },
-      {
-        name: 'Luca Barbiere',
-        email: 'luca@barberia.it',
-        password: 'Staff1234!',
-        role: 'staff',
-        workerId: workers[1]._id
-      }
-    ]);
-    console.log('👤 Utenti creati: admin@barberia.it e luca@barberia.it');
-
-    // 5. Prenotazioni fittizie per oggi
+    // 5. Prenotazioni e Blocchi per oggi
     const today = new Date();
     const y = today.getFullYear();
     const m = today.getMonth();
@@ -100,45 +127,39 @@ const seedDev = async () => {
     await Booking.create([
       // Appuntamento cliente con Marco alle 10:00
       {
-        customerName: 'Mario Rossi',
-        customerPhone: '+393331112233',
+        type: 'appointment',
+        workerId: workers[0]._id,
+        serviceId: services[0]._id,
         clientName: 'Mario Rossi',
         clientPhone: '+393331112233',
-        serviceId: services[0]._id,
-        workerId: workers[0]._id,
+        price: services[0].price,
         startTime: new Date(y, m, d, 10, 0, 0),
         endTime: new Date(y, m, d, 10, 30, 0),
-        cancellationCode: crypto.randomBytes(8).toString('hex'),
-        status: 'confirmed',
-        type: 'appointment'
+        cancellationCode: crypto.randomBytes(16).toString('hex'),
+        status: 'confirmed'
       },
       // Appuntamento cliente con Luca alle 11:30
       {
-        customerName: 'Giuseppe Verdi',
-        customerPhone: '+393334445566',
+        type: 'appointment',
+        workerId: workers[1]._id,
+        serviceId: services[2]._id,
         clientName: 'Giuseppe Verdi',
         clientPhone: '+393334445566',
-        serviceId: services[2]._id, // 60 min combo
-        workerId: workers[1]._id,
+        price: services[2].price,
         startTime: new Date(y, m, d, 11, 30, 0),
         endTime: new Date(y, m, d, 12, 30, 0),
-        cancellationCode: crypto.randomBytes(8).toString('hex'),
-        status: 'confirmed',
-        type: 'appointment'
+        cancellationCode: crypto.randomBytes(16).toString('hex'),
+        status: 'confirmed'
       },
-      // Blocco assenza / permesso per Antonio
+      // Blocco assenza / pausa per Antonio
       {
-        customerName: '[BLOCCO] Visita medica',
-        customerPhone: '',
-        clientName: '[BLOCCO] Visita medica',
-        clientPhone: '',
+        type: 'block',
         workerId: workers[2]._id,
         startTime: new Date(y, m, d, 15, 30, 0),
         endTime: new Date(y, m, d, 17, 0, 0),
-        cancellationCode: crypto.randomBytes(8).toString('hex'),
-        status: 'confirmed',
-        type: 'block',
-        note: 'Visita medica'
+        notes: 'Visita medica',
+        cancellationCode: crypto.randomBytes(16).toString('hex'),
+        status: 'blocked'
       }
     ]);
     console.log('📅 3 Prenotazioni/Blocchi di test inseriti per oggi.');
@@ -146,8 +167,10 @@ const seedDev = async () => {
     console.log('\n=============================================');
     console.log('🎉 SEED DEV COMPLETATO!');
     console.log('---------------------------------------------');
-    console.log('🔑 Admin: admin@barberia.it | Admin1234!');
-    console.log('🔑 Staff: luca@barberia.it  | Staff1234!');
+    console.log('🔑 Admin:   admin@barberia.it   | Admin1234!');
+    console.log('🔑 Marco:   marco@barberia.it   | Staff1234!');
+    console.log('🔑 Luca:    luca@barberia.it    | Staff1234!');
+    console.log('🔑 Antonio: antonio@barberia.it | Staff1234!');
     console.log('=============================================\n');
 
     await mongoose.disconnect();

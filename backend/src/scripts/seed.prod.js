@@ -24,26 +24,52 @@ const seedProd = async () => {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connesso a MongoDB Atlas.');
 
-    // 1. Inizializzazione Admin (Upsert sicuro: se esiste già non fa danni)
+    // 1. Controllo / Creazione Operatore Base (Titolare)
+    let masterWorker = await Worker.findOne({ isDeleted: false });
+
+    if (!masterWorker) {
+      masterWorker = await Worker.create({
+        name: 'Titolare',
+        color: '#d97706',
+        isActive: true,
+        isDeleted: false
+      });
+      console.log(`💈 Primo operatore creato (ID: ${masterWorker._id}).`);
+    } else {
+      console.log(`ℹ️ Operatori già presenti (${masterWorker.name} rilevato).`);
+    }
+
+    // 2. Controllo / Creazione Admin con aggancio al Worker
     const adminEmail = (process.env.ADMIN_INITIAL_EMAIL || 'admin@barberia.it').toLowerCase().trim();
     const adminPlainPassword = process.env.ADMIN_INITIAL_PASSWORD || 'CambiamiAlPrimoLogin2026!';
 
-    const existingAdmin = await User.findOne({ email: adminEmail });
+    let existingAdmin = await User.findOne({ email: adminEmail });
 
     if (!existingAdmin) {
-      await User.create({
+      const newAdmin = new User({
         name: 'Titolare',
         email: adminEmail,
         password: adminPlainPassword,
-        role: 'admin'
+        role: 'admin',
+        workerId: masterWorker._id // Assegnato subito alla poltrona/colonna
       });
+      await newAdmin.save(); // Esegue il pre-save hook con bcrypt
+
       console.log(`👤 Admin creato con successo: ${adminEmail}`);
       console.log(`🔑 Password provvisoria impostata: ${adminPlainPassword}`);
+      console.log(`🔗 Admin collegato al profilo operatore: ${masterWorker.name}`);
     } else {
-      console.log(`ℹ️ Admin (${adminEmail}) già presente nel DB. Nessuna modifica apportata.`);
+      // Se l'admin esiste già ma non ha un workerId associato, lo agganciamo
+      if (!existingAdmin.workerId && masterWorker) {
+        existingAdmin.workerId = masterWorker._id;
+        await existingAdmin.save();
+        console.log(`🔗 Admin esistente aggiornato con workerId: ${masterWorker._id}`);
+      } else {
+        console.log(`ℹ️ Admin (${adminEmail}) già presente e configurato.`);
+      }
     }
 
-    // 2. Controllo Servizi (inserisce il listino base solo se la collezione è vuota)
+    // 3. Controllo Servizi (inseriti solo se il listino è vuoto)
     const serviceCount = await Service.countDocuments();
     if (serviceCount === 0) {
       await Service.create([
@@ -51,38 +77,27 @@ const seedProd = async () => {
           name: 'Taglio Capelli & Styling',
           description: 'Consulenza, lavaggio, taglio forbice/macchinetta e asciugatura.',
           durationMinutes: 30,
-          price: 22.0
+          price: 22.0,
+          category: 'Capelli'
         },
         {
           name: 'Rasatura Barba Tradizionale',
           description: 'Panno caldo, olio pre-rasatura, rasoio a mano libera e dopobarba.',
           durationMinutes: 30,
-          price: 18.0
+          price: 18.0,
+          category: 'Barba'
         },
         {
           name: 'Combo Taglio + Barba',
           description: 'Trattamento completo testa e barba con panno caldo.',
           durationMinutes: 60,
-          price: 35.0
+          price: 35.0,
+          category: 'Completo'
         }
       ]);
       console.log('✂️ Listino servizi iniziale inserito.');
     } else {
       console.log(`ℹ️ Listino servizi già presente (${serviceCount} servizi trovati).`);
-    }
-
-    // 3. Controllo Operatori (inserisce un primo barbiere solo se non ce ne sono)
-    const workerCount = await Worker.countDocuments({ isDeleted: false });
-    if (workerCount === 0) {
-      await Worker.create({
-        name: 'Titolare Barbiere',
-        color: '#d97706',
-        isActive: true,
-        isDeleted: false
-      });
-      console.log('💈 Primo operatore base inserito.');
-    } else {
-      console.log(`ℹ️ Organico già configurato (${workerCount} operatori attivi).`);
     }
 
     console.log('\n✅ Bootstrap Produzione completato con successo.\n');
