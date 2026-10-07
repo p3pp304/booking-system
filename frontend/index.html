@@ -4,16 +4,61 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#09090b" />
-    <meta name="description" content="Prenota il tuo appuntamento da Atelier Barber." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Atelier" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>Atelier Barber</title>
+    
+    <!-- Script per configurazione dinamica PWA (Admin vs Booking) -->
+    <script>
+      (function () {
+        const isAdmin = "%VITE_APP_MODE%" === "admin";
+
+        // Configurazione metadati
+        const appTitle = isAdmin ? "Atelier Staff" : "Atelier Barber";
+        const shortTitle = isAdmin ? "Gestionale" : "Prenota";
+        const descContent = isAdmin 
+          ? "Gestionale staff Atelier Barber." 
+          : "Prenota il tuo appuntamento da Atelier Barber.";
+        const manifestUrl = isAdmin ? "/manifest-admin.json" : "/manifest-booking.json";
+        const iconUrl = isAdmin ? "/icon-admin.png" : "/icon-client.png";
+
+        // Titolo pagina e titolo app per iOS
+        document.title = appTitle;
+
+        // Meta Description
+        const metaDesc = document.createElement("meta");
+        metaDesc.name = "description";
+        metaDesc.content = descContent;
+        document.head.appendChild(metaDesc);
+
+        // Titolo icona su Homescreen iOS
+        const appleTitle = document.createElement("meta");
+        appleTitle.name = "apple-mobile-web-app-title";
+        appleTitle.content = shortTitle;
+        document.head.appendChild(appleTitle);
+
+        // Icona Apple Touch (Homescreen iOS)
+        const appleIcon = document.createElement("link");
+        appleIcon.rel = "apple-touch-icon";
+        appleIcon.href = iconUrl;
+        document.head.appendChild(appleIcon);
+
+        // Favicon browser
+        const favicon = document.createElement("link");
+        favicon.rel = "icon";
+        favicon.type = "image/png";
+        favicon.href = iconUrl;
+        document.head.appendChild(favicon);
+
+        // Manifest PWA (Android / Chrome)
+        const manifestLink = document.createElement("link");
+        manifestLink.rel = "manifest";
+        manifestLink.href = manifestUrl;
+        document.head.appendChild(manifestLink);
+      })();
+    </script>
   </head>
-  <body>
+  <body class="bg-black">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
