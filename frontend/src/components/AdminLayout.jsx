@@ -1,7 +1,5 @@
-import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Calendar, Users, Settings, LogOut, Scissors } from 'lucide-react';
-import Footer from './Footer';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -27,7 +25,7 @@ return (
   <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
     
     {/* --- HEADER SUPERIORE MOBILE (nascosto su desktop) --- */}
-    <header className="md:hidden flex items-center justify-between p-3 bg-zinc-950/95 border-b border-zinc-900 sticky top-0 z-30 backdrop-blur-md">
+    <header className="md:hidden safe-area-top flex items-center justify-between p-3 bg-zinc-950/95 border-b border-zinc-900 sticky top-0 z-30 backdrop-blur-md">
       <div 
         onClick={() => navigate('/admin/schedule')}
         className=" pl-3 flex items-center gap-2 cursor-pointer select-none transition-transform duration-200 ease-out hover:scale-105 active:scale-95 origin-left"
@@ -42,7 +40,7 @@ return (
           <div className="relative flex items-center justify-center w-6 h-6 rounded-lg bg-zinc-800 text-zinc-100">
             <Scissors className="w-3 h-3 text-zinc-300" />
           </div>
-          <span className="text-xs font-medium text-zinc-200 truncate max-w-[100px]">
+          <span className="text-xs font-medium text-zinc-200 truncate max-w-25">
             {staffName}
           </span>
         </div>
@@ -63,7 +61,7 @@ return (
         {/* Header Desktop */}
         <div className="flex items-center justify-between gap-3 px-3 py-3 border border-zinc-800/80 bg-zinc-900/30 rounded-2xl">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative flex items-center justify-center shrink-0 w-9 h-9 rounded-xl bg-gradient-to-b from-zinc-800 to-zinc-900 border border-zinc-700/60 shadow-inner text-zinc-100">
+            <div className="relative flex items-center justify-center shrink-0 w-9 h-9 rounded-xl bg-linear-to-b from-zinc-800 to-zinc-900 border border-zinc-700/60 shadow-inner text-zinc-100">
               <Scissors className="w-4 h-4 text-zinc-200" />
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-zinc-950" />
             </div>
