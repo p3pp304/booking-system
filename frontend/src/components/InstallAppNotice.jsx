@@ -10,7 +10,7 @@ const isStandalone = () => window.matchMedia('(display-mode: standalone)').match
 export default function InstallAppNotice() {
   const [platform, setPlatform] = useState('other');
   const [installPrompt, setInstallPrompt] = useState(null);
-  const [installed, setInstalled] = useState(false);
+  const [installed, setInstalled] = useState(() => isStandalone());
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function InstallAppNotice() {
           <p className="text-xs font-semibold text-zinc-100">Aggiungi Atelier alla schermata Home</p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">
             {isIOS
-              ? 'In Safari: Condividi, poi “Aggiungi alla schermata Home”. Apri l’icona per usare l’app senza la barra del browser.'
+              ? 'Su iPhone/iPad apri il sito in Safari: Condividi → Aggiungi alla schermata Home. Avvia l’icona per aprire l’app senza la barra del browser.'
               : canPrompt
                 ? 'Installa l’app per aprirla dalla schermata Home senza la barra del browser.'
                 : 'In Chrome: menu ⋮ → “Installa app” o “Aggiungi a schermata Home”. In Safari: Condividi → “Aggiungi alla schermata Home”.'}
