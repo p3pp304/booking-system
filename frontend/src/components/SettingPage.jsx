@@ -149,12 +149,7 @@ export default function SettingsPage() {
   // ==========================================
   const handleSaveSalon = (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    // Salva nei tuoi settings o localStorage
-    setTimeout(() => {
-      setIsSubmitting(false);
-      notifySuccess('Informazioni del salone salvate.');
-    }, 400);
+    notifyError('Salvataggio non disponibile: il backend non espone ancora una rotta per le impostazioni del salone.');
   };
 
   // ==========================================
@@ -174,11 +169,7 @@ export default function SettingsPage() {
 
   const handleSaveRules = (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      notifySuccess('Regole di prenotazione e orari salvati.');
-    }, 400);
+    notifyError('Salvataggio non disponibile: orari e regole sono ancora configurati nel backend.');
   };
 
   return (
