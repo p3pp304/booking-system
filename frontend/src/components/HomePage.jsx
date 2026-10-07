@@ -11,6 +11,7 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import BookingPanel from './BookingPanel';
+import InstallAppNotice from './InstallAppNotice';
 import { fetchServices, fetchPublicConfig } from '../api/publicApi';
 import Footer from './Footer';
 
@@ -95,7 +96,7 @@ export default function HomePage() {
     <div className="min-h-dvh bg-zinc-950 text-zinc-100 flex flex-col font-sans select-none pb-24">
         
         {/* 1. HEADER MINIMALE */}
-        <header className="sticky top-0 z-40 relative bg-zinc-950/90 backdrop-blur-md border-b border-zinc-900 px-5 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-40 relative safe-area-top bg-zinc-950/90 backdrop-blur-md border-b border-zinc-900 px-5 py-4 flex items-center justify-between">
             <div 
                 onClick={() => navigate('/')} 
             className="flex items-center gap-2 cursor-pointer select-none transition-transform duration-200 ease-out hover:scale-105 active:scale-95 origin-left lg:absolute lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:origin-center"
@@ -114,6 +115,8 @@ export default function HomePage() {
             <span>Gestisci prenotazione</span>
         </button>
         </header>
+
+        <InstallAppNotice />
 
         {/* 2. GALLERIA TOUCH ORIZZONTALE (FOTO CHE SCORRONO) */}
         <main>
@@ -283,7 +286,7 @@ export default function HomePage() {
             <Footer/>
 
             {/* 6. BOTTOM BAR NATIVA PER PWA (Pulsante Bianco ad Alto Contrasto) */}
-            <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-900 flex items-center justify-between">
+            <div className="fixed bottom-0 inset-x-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-900 flex items-center justify-between">
             <div>
                 <span className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block">Agenda Live</span>
                 <span className="text-xs font-medium text-zinc-300">Prenota il tuo appuntamento</span>
